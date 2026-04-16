@@ -81,7 +81,18 @@
     "empty": "Silence. Click \"Start recording\".",
     "selectLang": "Pick at least one language",
     "sessionCreated": "Session created",
-    "error": "Error"
+    "error": "Error",
+    "protocol": {
+      "sectionTitle": "Generate protocol",
+      "hint": "Pick a template and format. The LLM fills the template with facts from the transcript.",
+      "templateLabel": "Template",
+      "formatLabel": "Format",
+      "generateBtn": "Generate",
+      "generating": "Generating…",
+      "done": "Protocol ready",
+      "pickTemplate": "Pick a template",
+      "error": "Failed to generate protocol"
+    }
   },
   "session": {
     "empty": "Transcript is empty",

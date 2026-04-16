@@ -56,6 +56,9 @@ class Settings(BaseSettings):
     asr_kazakh_model: str = "issai/whisper-large-v3-kazakh"
     diarization_model: str = "pyannote/speaker-diarization-3.1"
 
+    # Protocol templates (directory with manifest.json + <id>.md files)
+    templates_dir: str = ""  # empty → resolve to repo-root "образцы/" at runtime
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.api_cors_origins.split(",") if o.strip()]

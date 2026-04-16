@@ -6,7 +6,13 @@ import { Card, Badge } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/lib/auth';
 import { useToasts } from '@/components/ui/Toast';
-import { sessionsApi, type AsrProvider, type LiveSession } from '@/lib/api';
+import {
+  sessionsApi,
+  type AsrProvider,
+  type LiveSession,
+  type ProtocolFormat,
+  type ProtocolTemplate,
+} from '@/lib/api';
 import { startMic, type MicStream } from '@/lib/mic';
 import { Waveform } from '@/components/Waveform';
 
@@ -47,6 +53,23 @@ export default function LivePage() {
   const reconnectAttemptRef = useRef(0);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const userStoppedRef = useRef(false);
+
+  const [templates, setTemplates] = useState<ProtocolTemplate[]>([]);
+  const [templateId, setTemplateId] = useState<string>('');
+  const [protoFormat, setProtoFormat] = useState<ProtocolFormat>('markdown');
+  const [protoLoading, setProtoLoading] = useState(false);
+  const [protoMarkdown, setProtoMarkdown] = useState<string>('');
+
+  useEffect(() => {
+    sessionsApi
+      .listTemplates()
+      .then((r) => {
+        setTemplates(r.data);
+        if (r.data.length && !templateId) setTemplateId(r.data[0].id);
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const transcriptListRef = useRef<HTMLOListElement>(null);
   const stickToBottomRef = useRef(true);
@@ -132,13 +155,15 @@ export default function LivePage() {
             setPartial('');
             setSegments((rs) => {
               const copy = [...rs];
-              const idx = copy.findIndex(
+              // Prefer exact start_ms/end_ms match; fall back to OLDEST pending.
+              let idx = copy.findIndex(
                 (r) => r.pending && r.start_ms === data.start_ms && r.end_ms === data.end_ms
               );
+              if (idx < 0) idx = copy.findIndex((r) => r.pending);
               const entry: Segment = {
                 id: idx >= 0 ? copy[idx].id : nextIdRef.current++,
-                start_ms: data.start_ms,
-                end_ms: data.end_ms,
+                start_ms: data.start_ms ?? (idx >= 0 ? copy[idx].start_ms : 0),
+                end_ms: data.end_ms ?? (idx >= 0 ? copy[idx].end_ms : 0),
                 speaker: data.speaker || 'SPEAKER_00',
                 language: data.language,
                 text: data.text,
@@ -218,6 +243,44 @@ export default function LivePage() {
     const el = transcriptListRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [segments]);
+
+  async function generateProtocol() {
+    if (!session || !templateId) return;
+    setProtoLoading(true);
+    setProtoMarkdown('');
+    try {
+      const r = await sessionsApi.generateProtocol(session.id, templateId, protoFormat);
+      const blob = r.data as Blob;
+      const safe = (session.title || 'protocol').replace(/[^\p{L}\p{N}_.-]+/gu, '_');
+      if (protoFormat === 'markdown') {
+        const text = await blob.text();
+        setProtoMarkdown(text);
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${safe}.${protoFormat}`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      }
+      push('success', t('protocol.done'));
+    } catch (e: any) {
+      let msg = t('protocol.error');
+      const data = e?.response?.data;
+      if (data) {
+        try {
+          const text = data instanceof Blob ? await data.text() : JSON.stringify(data);
+          const parsed = JSON.parse(text);
+          msg = parsed?.detail || msg;
+        } catch {}
+      }
+      push('error', msg);
+    } finally {
+      setProtoLoading(false);
+    }
+  }
 
   async function downloadSnapshot(format: 'pdf' | 'docx' | 'json' | 'txt' | 'srt' | 'vtt') {
     if (!session || !token) return;
@@ -382,6 +445,55 @@ export default function LivePage() {
           </ol>
         )}
       </Card>
+
+      {!recording && segments.filter((s) => !s.pending).length > 0 && (
+        <Card>
+          <h2 className="mb-2 font-medium">{t('protocol.sectionTitle')}</h2>
+          <p className="mb-3 text-sm text-muted">{t('protocol.hint')}</p>
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="flex-1 min-w-[220px]">
+              <span className="mb-1 block text-sm">{t('protocol.templateLabel')}</span>
+              <select
+                value={templateId}
+                onChange={(e) => setTemplateId(e.target.value)}
+                className="h-10 w-full rounded-md border border-border bg-transparent px-2 text-sm"
+              >
+                {templates.length === 0 && <option value="">{t('protocol.pickTemplate')}</option>}
+                {templates.map((tpl) => (
+                  <option key={tpl.id} value={tpl.id}>
+                    {tpl.name}
+                  </option>
+                ))}
+              </select>
+              {templateId && (
+                <span className="mt-1 block text-xs text-muted">
+                  {templates.find((x) => x.id === templateId)?.description}
+                </span>
+              )}
+            </label>
+            <label>
+              <span className="mb-1 block text-sm">{t('protocol.formatLabel')}</span>
+              <select
+                value={protoFormat}
+                onChange={(e) => setProtoFormat(e.target.value as ProtocolFormat)}
+                className="h-10 rounded-md border border-border bg-transparent px-2 text-sm"
+              >
+                <option value="markdown">Markdown</option>
+                <option value="docx">DOCX</option>
+                <option value="pdf">PDF</option>
+              </select>
+            </label>
+            <Button onClick={generateProtocol} loading={protoLoading} disabled={!templateId}>
+              {protoLoading ? t('protocol.generating') : t('protocol.generateBtn')}
+            </Button>
+          </div>
+          {protoMarkdown && (
+            <pre className="mt-4 max-h-[60vh] overflow-auto whitespace-pre-wrap rounded-md border border-border bg-muted/10 p-3 text-sm">
+              {protoMarkdown}
+            </pre>
+          )}
+        </Card>
+      )}
     </div>
   );
 }

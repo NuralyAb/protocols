@@ -117,6 +117,15 @@ export type LiveSession = {
   ended_at?: string | null;
 };
 
+export type ProtocolTemplate = {
+  id: string;
+  name: string;
+  description: string;
+  language: string;
+};
+
+export type ProtocolFormat = 'markdown' | 'docx' | 'pdf';
+
 export const sessionsApi = {
   create: (payload: { title?: string; languages?: string[]; asr_provider?: AsrProvider }) =>
     api.post<LiveSession>('/api/v1/sessions', payload),
@@ -128,4 +137,11 @@ export const sessionsApi = {
     id: string,
     patches: Array<{ diarization_id: string; label?: string; role?: string }>
   ) => api.patch(`/api/v1/sessions/${id}/speakers`, patches),
+  listTemplates: () => api.get<ProtocolTemplate[]>('/api/v1/sessions/templates'),
+  generateProtocol: (id: string, template_id: string, format: ProtocolFormat) =>
+    api.post<Blob>(
+      `/api/v1/sessions/${id}/protocol`,
+      { template_id, format },
+      { responseType: 'blob' }
+    ),
 };

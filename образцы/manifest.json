@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "templates": [
+    {
+      "id": "general",
+      "file": "general.md",
+      "name": "Общий протокол заседания",
+      "description": "Универсальная форма: повестка → слушали → выступили → постановили.",
+      "language": "ru"
+    },
+    {
+      "id": "short",
+      "file": "short.md",
+      "name": "Краткий протокол (планёрка)",
+      "description": "Сжатая форма для оперативных совещаний. Без блока «Выступили».",
+      "language": "ru"
+    },
+    {
+      "id": "attestation",
+      "file": "attestation.md",
+      "name": "Аттестационная комиссия",
+      "description": "Аттестация работников. По каждому работнику — итог голосования и решение.",
+      "language": "ru"
+    },
+    {
+      "id": "disciplinary",
+      "file": "disciplinary.md",
+      "name": "Дисциплинарная комиссия",
+      "description": "Рассмотрение проступка. Объяснения, обстоятельства, мера взыскания.",
+      "language": "ru"
+    },
+    {
+      "id": "accident-investigation",
+      "file": "accident-investigation.md",
+      "name": "Расследование несчастного случая",
+      "description": "Заседание комиссии по расследованию НС на производстве (для оформления Н-1).",
+      "language": "ru"
+    },
+    {
+      "id": "general-assembly",
+      "file": "general-assembly.md",
+      "name": "Общее собрание учредителей / ОСИ",
+      "description": "ТОО, АО или ОСИ: кворум, повестка, голосование по каждому вопросу.",
+      "language": "ru"
+    },
+    {
+      "id": "tender",
+      "file": "tender.md",
+      "name": "Тендерная (конкурсная) комиссия",
+      "description": "Заседание по госзакупкам или выбору поставщика. Допуск, оценка, победитель.",
+      "language": "ru"
+    },
+    {
+      "id": "pedagogical-council",
+      "file": "pedagogical-council.md",
+      "name": "Педагогический совет",
+      "description": "Заседание педсовета школы / колледжа / вуза.",
+      "language": "ru"
+    }
+  ]
+}

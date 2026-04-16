@@ -4,6 +4,7 @@ x-api-env: &api-env
   APP_ENV: ${APP_ENV}
   APP_DEBUG: ${APP_DEBUG}
   APP_SECRET_KEY: ${APP_SECRET_KEY}
+  TEMPLATES_DIR: /templates
   JWT_ALGORITHM: ${JWT_ALGORITHM}
   JWT_ACCESS_TTL_MIN: ${JWT_ACCESS_TTL_MIN}
   JWT_REFRESH_TTL_DAYS: ${JWT_REFRESH_TTL_DAYS}
@@ -97,6 +98,7 @@ services:
     volumes:
       - ../backend:/app
       - ../ml-models:/ml-models
+      - ../образцы:/templates:ro
     ports:
       - "8000:8000"
     depends_on:

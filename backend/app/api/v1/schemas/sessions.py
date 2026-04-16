@@ -21,3 +21,15 @@ class LiveSessionOut(BaseModel):
     ended_at: datetime | None = None
 
     model_config = {"from_attributes": True}
+
+
+class TemplateOut(BaseModel):
+    id: str
+    name: str
+    description: str
+    language: str
+
+
+class ProtocolGenerateRequest(BaseModel):
+    template_id: str
+    format: Literal["markdown", "docx", "pdf"] = "markdown"

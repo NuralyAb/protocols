@@ -6,7 +6,12 @@ from app.api.v1.schemas.jobs import (
     SpeakerPatch,
     TranscriptSegmentOut,
 )
-from app.api.v1.schemas.sessions import LiveSessionCreate, LiveSessionOut
+from app.api.v1.schemas.sessions import (
+    LiveSessionCreate,
+    LiveSessionOut,
+    ProtocolGenerateRequest,
+    TemplateOut,
+)
 
 __all__ = [
     "LoginRequest",
@@ -20,4 +25,6 @@ __all__ = [
     "TranscriptSegmentOut",
     "LiveSessionCreate",
     "LiveSessionOut",
+    "ProtocolGenerateRequest",
+    "TemplateOut",
 ]

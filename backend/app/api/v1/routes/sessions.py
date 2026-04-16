@@ -5,13 +5,30 @@ from fastapi import APIRouter, HTTPException, Response, status
 from sqlalchemy import select
 
 from app.api.v1.deps import CurrentUser, DBSession
-from app.api.v1.schemas import LiveSessionCreate, LiveSessionOut
+from app.api.v1.schemas import (
+    LiveSessionCreate,
+    LiveSessionOut,
+    ProtocolGenerateRequest,
+    TemplateOut,
+)
 from app.core.config import get_settings
 from app.db.models import Export, ExportFormat, LiveSession, Speaker, TranscriptSegment
 from app.services.export import render as render_export
+from app.services.export.markdown_convert import markdown_to_docx, markdown_to_pdf
 from app.services.storage.s3_service import export_key, upload_fileobj
+from app.services.summarization.protocol_generator import generate_from_template
+from app.services.summarization.templates import get_template, list_templates
 
 router = APIRouter()
+
+
+@router.get("/templates", response_model=list[TemplateOut])
+async def list_protocol_templates(user: CurrentUser) -> list[TemplateOut]:
+    _ = user  # auth-gated; list itself is user-agnostic
+    return [
+        TemplateOut(id=m.id, name=m.name, description=m.description, language=m.language)
+        for m in list_templates()
+    ]
 
 
 @router.post("", response_model=LiveSessionOut, status_code=status.HTTP_201_CREATED)
@@ -140,6 +157,75 @@ async def session_export(
             "Cache-Control": "no-store",
         },
     )
+
+
+@router.post("/{session_id}/protocol")
+async def generate_session_protocol(
+    session_id: UUID,
+    body: ProtocolGenerateRequest,
+    user: CurrentUser,
+    db: DBSession,
+) -> Response:
+    import asyncio
+
+    session = await _load_session(session_id, user, db)
+    template = get_template(body.template_id)
+    if not template:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Template '{body.template_id}' not found")
+
+    result = await _build_result(session_id, db)
+    transcript = result.get("transcript") or []
+    if not transcript:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Transcript is empty")
+    languages = result.get("metadata", {}).get("languages_detected") or None
+
+    try:
+        markdown = await asyncio.to_thread(
+            generate_from_template, transcript, template, languages
+        )
+    except RuntimeError as e:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(e)) from e
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"LLM error: {e}") from e
+
+    safe_title = (session.title or f"protocol_{session.id}").replace('"', "").strip()
+
+    if body.format == "markdown":
+        return Response(
+            content=markdown.encode("utf-8"),
+            media_type="text/markdown; charset=utf-8",
+            headers={
+                "Content-Disposition": f'attachment; filename="{safe_title}.md"',
+                "Cache-Control": "no-store",
+                "X-Template-Id": template.meta.id,
+            },
+        )
+
+    if body.format == "docx":
+        data = await asyncio.to_thread(markdown_to_docx, markdown, safe_title)
+        return Response(
+            content=data,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={
+                "Content-Disposition": f'attachment; filename="{safe_title}.docx"',
+                "Cache-Control": "no-store",
+                "X-Template-Id": template.meta.id,
+            },
+        )
+
+    if body.format == "pdf":
+        data = await asyncio.to_thread(markdown_to_pdf, markdown, safe_title)
+        return Response(
+            content=data,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{safe_title}.pdf"',
+                "Cache-Control": "no-store",
+                "X-Template-Id": template.meta.id,
+            },
+        )
+
+    raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Unsupported format: {body.format}")
 
 
 @router.patch("/{session_id}/speakers", status_code=status.HTTP_204_NO_CONTENT)
