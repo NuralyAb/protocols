@@ -1,0 +1,131 @@
+import axios from 'axios';
+
+export const api = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
+  withCredentials: false,
+});
+
+export function setAuthToken(token: string | null) {
+  if (token) api.defaults.headers.common.Authorization = `Bearer ${token}`;
+  else delete api.defaults.headers.common.Authorization;
+}
+
+api.interceptors.response.use(
+  (r) => r,
+  (err) => {
+    if (err?.response?.status === 401 && typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('protocol-ai-auth');
+      } catch {}
+    }
+    return Promise.reject(err);
+  }
+);
+
+// ---- Jobs ----
+export type JobStatus = 'pending' | 'processing' | 'completed' | 'failed';
+
+export type TranscriptSegment = {
+  speaker: string;
+  role?: string | null;
+  language?: string | null;
+  input_modality?: 'speech' | 'sign';
+  start_time: number;
+  end_time: number;
+  text: string;
+  confidence?: number | null;
+};
+
+export type Participant = {
+  id: string;
+  label: string;
+  role?: string | null;
+};
+
+export type Decision = { text: string; votes?: { for?: number; against?: number; abstain?: number } | null };
+export type ActionItem = { task: string; assignee?: string | null; deadline?: string | null };
+export type Discussion = { topic: string; summary: string; speakers?: string[] };
+
+export type JobResult = {
+  transcript: TranscriptSegment[];
+  protocol: {
+    title?: string | null;
+    date?: string | null;
+    participants: Participant[];
+    agenda: string[];
+    discussion: Discussion[];
+    decisions: Decision[];
+    action_items: ActionItem[];
+  };
+  metadata: {
+    duration_ms?: number;
+    languages_detected?: string[];
+    model_versions?: Record<string, string>;
+    summarization_error?: string;
+  };
+};
+
+export type JobBrief = {
+  id: string;
+  title?: string | null;
+  status: JobStatus;
+  progress: number;
+  source_filename?: string | null;
+  duration_ms?: number | null;
+  created_at: string;
+  updated_at: string;
+  result?: JobResult | null;
+};
+
+export const jobsApi = {
+  list: () => api.get<JobBrief[]>('/api/v1/jobs'),
+  upload: (file: File, languages: string, title?: string, onProgress?: (pct: number) => void) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('languages', languages);
+    if (title) fd.append('title', title);
+    return api.post<{ job_id: string; status: JobStatus }>('/api/v1/build_protocol', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: (e) => {
+        if (!onProgress || !e.total) return;
+        onProgress(Math.round((e.loaded * 100) / e.total));
+      },
+    });
+  },
+  status: (id: string) =>
+    api.get<{ id: string; status: JobStatus; progress: number; error?: string | null }>(
+      `/api/v1/jobs/${id}`
+    ),
+  result: (id: string) => api.get<JobBrief>(`/api/v1/jobs/${id}/result`),
+  patchSpeakers: (
+    id: string,
+    patches: Array<{ diarization_id: string; label?: string; role?: string }>
+  ) => api.patch(`/api/v1/jobs/${id}/speakers`, patches),
+  exportUrl: (id: string, format: 'pdf' | 'docx' | 'json' | 'txt' | 'srt' | 'vtt') =>
+    `${api.defaults.baseURL}/api/v1/jobs/${id}/export?format=${format}`,
+};
+
+export type AsrProvider = 'openai' | 'local' | 'local_kazakh' | 'hf_kazakh';
+
+export type LiveSession = {
+  id: string;
+  title?: string | null;
+  is_active: boolean;
+  languages?: string[] | null;
+  asr_provider?: AsrProvider;
+  started_at: string;
+  ended_at?: string | null;
+};
+
+export const sessionsApi = {
+  create: (payload: { title?: string; languages?: string[]; asr_provider?: AsrProvider }) =>
+    api.post<LiveSession>('/api/v1/sessions', payload),
+  get: (id: string) => api.get<LiveSession>(`/api/v1/sessions/${id}`),
+  snapshot: (id: string) => api.get<JobResult>(`/api/v1/sessions/${id}/snapshot`),
+  exportUrl: (id: string, format: 'pdf' | 'docx' | 'json' | 'txt' | 'srt' | 'vtt') =>
+    `${api.defaults.baseURL}/api/v1/sessions/${id}/export?format=${format}`,
+  patchSpeakers: (
+    id: string,
+    patches: Array<{ diarization_id: string; label?: string; role?: string }>
+  ) => api.patch(`/api/v1/sessions/${id}/speakers`, patches),
+};

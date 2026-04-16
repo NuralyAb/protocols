@@ -1,0 +1,126 @@
+{
+  "app": {
+    "title": "AI-Протоколист",
+    "tagline": "Автоматический протокол заседаний. Казахский • Русский • Английский."
+  },
+  "nav": {
+    "dashboard": "Главная",
+    "upload": "Загрузить",
+    "live": "Онлайн",
+    "settings": "Настройки",
+    "skipToContent": "Перейти к содержимому"
+  },
+  "accessibility": {
+    "highContrast": "Высокий контраст",
+    "largeCaptions": "Крупные субтитры"
+  },
+  "cta": {
+    "upload": "Загрузить аудио",
+    "startLive": "Начать онлайн-заседание"
+  },
+  "auth": {
+    "title": "Вход",
+    "subtitle": "Войдите, чтобы продолжить",
+    "email": "Email",
+    "password": "Пароль",
+    "signIn": "Войти",
+    "signOut": "Выйти",
+    "error": "Не удалось войти",
+    "demoHint": "Демо: demo@protocol.ai / demo12345"
+  },
+  "dashboard": {
+    "title": "Мои заседания",
+    "subtitle": "Загруженные записи и онлайн-сессии",
+    "empty": "Пока пусто. Загрузите аудио или начните онлайн-заседание.",
+    "status": {
+      "pending": "Ожидает",
+      "processing": "Обработка",
+      "completed": "Готово",
+      "failed": "Ошибка"
+    }
+  },
+  "upload": {
+    "title": "Загрузка записи",
+    "subtitle": "Перетащите файл или нажмите, чтобы выбрать",
+    "dropzone": "Перетащите аудио сюда или нажмите",
+    "dropzoneAria": "Область перетаскивания файла",
+    "formats": "WAV, MP3, M4A, OGG, FLAC, WEBM — до 500 МБ",
+    "titleLabel": "Название",
+    "titlePlaceholder": "Например: Заседание совета, 15 апреля",
+    "languages": "Языки (подсказка распознавателю)",
+    "languagesHint": "Если выбран один язык — форсируется. Если несколько — auto-detect по фрагментам (поддерживается code-switching KK↔RU).",
+    "submit": "Создать протокол",
+    "reset": "Сбросить",
+    "uploading": "Загрузка: {pct}%",
+    "queued": "Файл поставлен в очередь обработки",
+    "tooBig": "Файл больше 500 МБ",
+    "selectLang": "Выберите хотя бы один язык",
+    "error": "Ошибка загрузки"
+  },
+  "live": {
+    "title": "Онлайн-заседание",
+    "subtitle": "Создайте сессию и начните запись с микрофона",
+    "sessionTitle": "Название",
+    "sessionTitlePh": "Например: Совет, 15 апреля",
+    "languages": "Языки",
+    "providerLabel": "Модель распознавания",
+    "providerOpenai": "OpenAI (gpt-4o-transcribe — лучшее качество, ~$0.05/мин)",
+    "providerHfKazakh": "HuggingFace Kazakh (модель крутится у HF, бесплатно, без локального GPU)",
+    "providerLocalKazakh": "Local Kazakh (whisper-turbo-ksc2 — на твоём GPU, бесплатно)",
+    "providerLocal": "Локально (faster-whisper large-v3, kk хуже, бесплатно)",
+    "providerOpenaiHint": "Облачная модель OpenAI. Требуется OPENAI_API_KEY и интернет.",
+    "providerHfKazakhHint": "Модель работает на серверах HuggingFace. Первый запрос ~30 сек (cold start), дальше быстрее. Нужен HUGGINGFACE_TOKEN.",
+    "providerLocalKazakhHint": "Kazakh-tuned Whisper на твоём GPU. Первый запуск конвертирует модель в CT2 (~5 мин), потом мгновенно. Бесплатно.",
+    "providerLocalHint": "Базовый Whisper. Нормально на ru/en, для казахского — посредственно.",
+    "createSession": "Создать сессию",
+    "start": "Начать запись",
+    "stop": "Остановить",
+    "recording": "Запись",
+    "reconnecting": "Переподключение…",
+    "liveTranscript": "Живая стенограмма",
+    "empty": "Пока тихо. Нажмите «Начать запись».",
+    "selectLang": "Выберите хотя бы один язык",
+    "sessionCreated": "Сессия создана",
+    "error": "Ошибка"
+  },
+  "session": {
+    "empty": "Транскрипт пуст",
+    "agenda": "Повестка",
+    "decisions": "Решения",
+    "actions": "Поручения",
+    "transcript": "Стенограмма",
+    "voteFor": "за",
+    "voteAgainst": "против",
+    "voteAbstain": "воздерж.",
+    "status": {
+      "pending": "Ожидает",
+      "processing": "Обработка",
+      "completed": "Готово",
+      "failed": "Ошибка"
+    },
+    "speakers": {
+      "title": "Участники",
+      "id": "ID",
+      "label": "Имя",
+      "role": "Роль",
+      "rolePh": "Председатель, Секретарь…",
+      "save": "Сохранить",
+      "saved": "Сохранено",
+      "error": "Ошибка сохранения",
+      "empty": "Нет участников"
+    },
+    "export": {
+      "aria": "Форматы экспорта"
+    }
+  },
+  "stages": {
+    "title": "Дорожная карта",
+    "scaffold": "Каркас",
+    "asr": "Офлайн ASR",
+    "llm": "LLM-резюме",
+    "export": "Экспорт",
+    "frontend": "MVP фронтенд",
+    "realtime": "Онлайн режим",
+    "polish": "Финальная полировка"
+  }
+}

@@ -1,0 +1,126 @@
+{
+  "app": {
+    "title": "AI Meeting Protocolist",
+    "tagline": "Automatic meeting minutes. Kazakh • Russian • English."
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "upload": "Upload",
+    "live": "Live",
+    "settings": "Settings",
+    "skipToContent": "Skip to content"
+  },
+  "accessibility": {
+    "highContrast": "High contrast",
+    "largeCaptions": "Large captions"
+  },
+  "cta": {
+    "upload": "Upload audio",
+    "startLive": "Start live meeting"
+  },
+  "auth": {
+    "title": "Sign in",
+    "subtitle": "Sign in to continue",
+    "email": "Email",
+    "password": "Password",
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "error": "Sign in failed",
+    "demoHint": "Demo: demo@protocol.ai / demo12345"
+  },
+  "dashboard": {
+    "title": "My meetings",
+    "subtitle": "Uploaded recordings and live sessions",
+    "empty": "Nothing yet. Upload audio or start a live meeting.",
+    "status": {
+      "pending": "Pending",
+      "processing": "Processing",
+      "completed": "Completed",
+      "failed": "Failed"
+    }
+  },
+  "upload": {
+    "title": "Upload recording",
+    "subtitle": "Drop a file or click to pick",
+    "dropzone": "Drop audio here or click",
+    "dropzoneAria": "File drop zone",
+    "formats": "WAV, MP3, M4A, OGG, FLAC, WEBM — up to 500 MB",
+    "titleLabel": "Title",
+    "titlePlaceholder": "e.g. Council meeting, April 15",
+    "languages": "Languages",
+    "languagesHint": "One language → forced. Multiple → per-chunk auto-detect (supports KK↔RU code-switching).",
+    "submit": "Create protocol",
+    "reset": "Reset",
+    "uploading": "Uploading: {pct}%",
+    "queued": "File queued for processing",
+    "tooBig": "File is larger than 500 MB",
+    "selectLang": "Pick at least one language",
+    "error": "Upload failed"
+  },
+  "live": {
+    "title": "Live meeting",
+    "subtitle": "Create a session and start recording from the microphone",
+    "sessionTitle": "Title",
+    "sessionTitlePh": "e.g. Council, April 15",
+    "languages": "Languages",
+    "providerLabel": "Speech recognition model",
+    "providerOpenai": "OpenAI (gpt-4o-transcribe — best quality, ~$0.05/min)",
+    "providerHfKazakh": "HuggingFace Kazakh (runs on HF servers, free, no local GPU)",
+    "providerLocalKazakh": "Local Kazakh (whisper-turbo-ksc2 — on your GPU, free)",
+    "providerLocal": "Local (faster-whisper large-v3, mediocre kk, free)",
+    "providerOpenaiHint": "OpenAI cloud model. Needs OPENAI_API_KEY and internet.",
+    "providerHfKazakhHint": "Model runs on HuggingFace servers. First request ~30 s (cold start), then fast. Needs HUGGINGFACE_TOKEN.",
+    "providerLocalKazakhHint": "Kazakh-tuned Whisper on your GPU. First run converts to CT2 (~5 min), then instant. Free.",
+    "providerLocalHint": "Vanilla Whisper. Good ru/en, mediocre Kazakh.",
+    "createSession": "Create session",
+    "start": "Start recording",
+    "stop": "Stop",
+    "recording": "Recording",
+    "reconnecting": "Reconnecting…",
+    "liveTranscript": "Live transcript",
+    "empty": "Silence. Click \"Start recording\".",
+    "selectLang": "Pick at least one language",
+    "sessionCreated": "Session created",
+    "error": "Error"
+  },
+  "session": {
+    "empty": "Transcript is empty",
+    "agenda": "Agenda",
+    "decisions": "Decisions",
+    "actions": "Action items",
+    "transcript": "Transcript",
+    "voteFor": "for",
+    "voteAgainst": "against",
+    "voteAbstain": "abstain",
+    "status": {
+      "pending": "Pending",
+      "processing": "Processing",
+      "completed": "Completed",
+      "failed": "Failed"
+    },
+    "speakers": {
+      "title": "Participants",
+      "id": "ID",
+      "label": "Name",
+      "role": "Role",
+      "rolePh": "Chair, Secretary…",
+      "save": "Save",
+      "saved": "Saved",
+      "error": "Save failed",
+      "empty": "No participants"
+    },
+    "export": {
+      "aria": "Export formats"
+    }
+  },
+  "stages": {
+    "title": "Roadmap",
+    "scaffold": "Scaffold",
+    "asr": "Offline ASR",
+    "llm": "LLM summary",
+    "export": "Export",
+    "frontend": "Frontend MVP",
+    "realtime": "Real-time mode",
+    "polish": "Polish"
+  }
+}

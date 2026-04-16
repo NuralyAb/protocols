@@ -1,0 +1,126 @@
+{
+  "app": {
+    "title": "AI-Хаттамашы",
+    "tagline": "Жиналыс хаттамасы автоматты түрде. Қазақ • Орыс • Ағылшын."
+  },
+  "nav": {
+    "dashboard": "Басты бет",
+    "upload": "Жүктеу",
+    "live": "Онлайн",
+    "settings": "Баптаулар",
+    "skipToContent": "Негізгі мазмұнға өту"
+  },
+  "accessibility": {
+    "highContrast": "Жоғары контраст",
+    "largeCaptions": "Үлкен субтитрлер"
+  },
+  "cta": {
+    "upload": "Аудио жүктеу",
+    "startLive": "Онлайн жиналыс бастау"
+  },
+  "auth": {
+    "title": "Кіру",
+    "subtitle": "Жалғастыру үшін кіріңіз",
+    "email": "Email",
+    "password": "Құпия сөз",
+    "signIn": "Кіру",
+    "signOut": "Шығу",
+    "error": "Кіру сәтсіз аяқталды",
+    "demoHint": "Демо: demo@protocol.ai / demo12345"
+  },
+  "dashboard": {
+    "title": "Менің жиналыстарым",
+    "subtitle": "Жүктелген жазбалар мен онлайн сессиялар",
+    "empty": "Әзірше бос. Аудио жүктеңіз немесе онлайн жиналыс бастаңыз.",
+    "status": {
+      "pending": "Күтуде",
+      "processing": "Өңдеу",
+      "completed": "Дайын",
+      "failed": "Қате"
+    }
+  },
+  "upload": {
+    "title": "Жазбаны жүктеу",
+    "subtitle": "Файлды осында тастаңыз немесе басып таңдаңыз",
+    "dropzone": "Аудионы осында тастаңыз немесе басыңыз",
+    "dropzoneAria": "Файлды тастау аймағы",
+    "formats": "WAV, MP3, M4A, OGG, FLAC, WEBM — 500 МБ-қа дейін",
+    "titleLabel": "Атауы",
+    "titlePlaceholder": "Мысалы: Кеңес отырысы, 15 сәуір",
+    "languages": "Тілдер",
+    "languagesHint": "Бір тіл таңдалса — мәжбүрлі. Бірнешеу таңдалса — үзіндіге қарай авто-анықтау (KK↔RU code-switching қолдайды).",
+    "submit": "Хаттама құру",
+    "reset": "Тазалау",
+    "uploading": "Жүктеу: {pct}%",
+    "queued": "Файл өңдеу кезегіне қойылды",
+    "tooBig": "Файл 500 МБ-тан үлкен",
+    "selectLang": "Кемінде бір тілді таңдаңыз",
+    "error": "Жүктеу қатесі"
+  },
+  "live": {
+    "title": "Онлайн жиналыс",
+    "subtitle": "Сессия құрып, микрофоннан жазуды бастаңыз",
+    "sessionTitle": "Атауы",
+    "sessionTitlePh": "Мысалы: Кеңес, 15 сәуір",
+    "languages": "Тілдер",
+    "providerLabel": "Тану моделі",
+    "providerOpenai": "OpenAI (gpt-4o-transcribe — үздік сапа, ~$0.05/мин)",
+    "providerHfKazakh": "HuggingFace Kazakh (HF серверінде, тегін, GPU қажет емес)",
+    "providerLocalKazakh": "Local Kazakh (whisper-turbo-ksc2 — сіздің GPU-де, тегін)",
+    "providerLocal": "Локалды (faster-whisper large-v3, kk үшін орташа, тегін)",
+    "providerOpenaiHint": "OpenAI бұлтты моделі. OPENAI_API_KEY және интернет қажет.",
+    "providerHfKazakhHint": "Модель HuggingFace серверлерінде. Алғашқы сұраныс ~30 сек, әрі қарай жылдам. HUGGINGFACE_TOKEN қажет.",
+    "providerLocalKazakhHint": "Қазақ тіліне бейімделген Whisper сіздің GPU-де. Алғашқы рет CT2-ге айналдырады (~5 мин), кейін лезде. Тегін.",
+    "providerLocalHint": "Базалық Whisper. ru/en жақсы, қазақша — орташа.",
+    "createSession": "Сессия құру",
+    "start": "Жазуды бастау",
+    "stop": "Тоқтату",
+    "recording": "Жазу",
+    "reconnecting": "Қайта қосылу…",
+    "liveTranscript": "Тікелей стенограмма",
+    "empty": "Әзірше тыныш. «Жазуды бастау» түймесін басыңыз.",
+    "selectLang": "Кемінде бір тіл таңдаңыз",
+    "sessionCreated": "Сессия құрылды",
+    "error": "Қате"
+  },
+  "session": {
+    "empty": "Транскрипт бос",
+    "agenda": "Күн тәртібі",
+    "decisions": "Шешімдер",
+    "actions": "Тапсырмалар",
+    "transcript": "Стенограмма",
+    "voteFor": "жақтап",
+    "voteAgainst": "қарсы",
+    "voteAbstain": "қалыс",
+    "status": {
+      "pending": "Күтуде",
+      "processing": "Өңдеу",
+      "completed": "Дайын",
+      "failed": "Қате"
+    },
+    "speakers": {
+      "title": "Қатысушылар",
+      "id": "ID",
+      "label": "Аты",
+      "role": "Рөлі",
+      "rolePh": "Төраға, Хатшы…",
+      "save": "Сақтау",
+      "saved": "Сақталды",
+      "error": "Сақтау қатесі",
+      "empty": "Қатысушылар жоқ"
+    },
+    "export": {
+      "aria": "Экспорт форматтары"
+    }
+  },
+  "stages": {
+    "title": "Жол картасы",
+    "scaffold": "Каркас",
+    "asr": "Офлайн ASR",
+    "llm": "LLM қорытынды",
+    "export": "Экспорт",
+    "frontend": "MVP фронтенд",
+    "realtime": "Онлайн режим",
+    "polish": "Соңғы реттеулер"
+  }
+}

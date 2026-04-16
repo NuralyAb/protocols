@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+
+# Env / secrets
+.env
+.env.local
+.env.*.local
+
+# ML models (big)
+ml-models/asr/*
+ml-models/sign/*
+ml-models/hf-cache/
+!ml-models/asr/.gitkeep
+!ml-models/sign/.gitkeep
+
+# Media / exports
+uploads/
+exports/
+storage/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Docker volumes (local)
+infra/volumes/
