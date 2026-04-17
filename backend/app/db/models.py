@@ -161,7 +161,7 @@ class LiveSession(Base):
     title: Mapped[str | None] = mapped_column(String(500))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     languages: Mapped[list[str] | None] = mapped_column(JSON)
-    asr_provider: Mapped[str] = mapped_column(String(16), default="local")
+    asr_provider: Mapped[str] = mapped_column(String(32), default="local")
     audio_key: Mapped[str | None] = mapped_column(String(500))
     viewer_token: Mapped[str | None] = mapped_column(String(64), index=True)
     friendly_id: Mapped[str | None] = mapped_column(String(32), unique=True, index=True)
