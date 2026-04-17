@@ -2,8 +2,9 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
+import { FileAudio, Mic, Upload, ArrowUpRight } from 'lucide-react';
 import { jobsApi, type JobBrief, type JobStatus } from '@/lib/api';
-import { Card, Badge } from '@/components/ui/Card';
+import { Badge, Card, CardBody, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/lib/auth';
 import { useToasts } from '@/components/ui/Toast';
@@ -40,7 +41,6 @@ export default function Dashboard() {
       }
     };
     load();
-    // auto-refresh while something is processing
     const id = setInterval(() => {
       if (!jobs) return;
       if (jobs.some((j) => j.status === 'pending' || j.status === 'processing')) load();
@@ -55,47 +55,101 @@ export default function Dashboard() {
   return (
     <div className="space-y-8">
       <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">{t('title')}</h1>
-          <p className="text-muted">{t('subtitle')}</p>
+        <div className="space-y-1">
+          <h1 className="text-3xl font-semibold tracking-tight">{t('title')}</h1>
+          <p className="text-muted-fg">{t('subtitle')}</p>
         </div>
         <div className="flex gap-2">
-          <Link href="/upload"><Button>{tCta('upload')}</Button></Link>
-          <Link href="/live"><Button variant="secondary">{tCta('startLive')}</Button></Link>
+          <Link href="/upload">
+            <Button>
+              <Upload /> {tCta('upload')}
+            </Button>
+          </Link>
+          <Link href="/live">
+            <Button variant="secondary">
+              <Mic /> {tCta('startLive')}
+            </Button>
+          </Link>
         </div>
       </header>
 
       {jobs === null ? (
-        <p className="text-muted">…</p>
+        <ul className="grid gap-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <li
+              key={i}
+              aria-hidden
+              className="h-[76px] animate-pulse rounded-xl border border-border bg-surface-2/50"
+            />
+          ))}
+        </ul>
       ) : jobs.length === 0 ? (
         <Card>
-          <p className="text-muted">{t('empty')}</p>
+          <CardBody className="flex flex-col items-center gap-3 py-14 text-center">
+            <div className="flex size-10 items-center justify-center rounded-full bg-primary-soft text-primary">
+              <FileAudio className="size-5" />
+            </div>
+            <div className="space-y-1">
+              <h2 className="text-base font-semibold">{t('empty')}</h2>
+              <p className="text-sm text-muted-fg">Upload a file or start a live session to begin.</p>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Link href="/upload">
+                <Button size="sm"><Upload /> {tCta('upload')}</Button>
+              </Link>
+              <Link href="/live">
+                <Button size="sm" variant="secondary"><Mic /> {tCta('startLive')}</Button>
+              </Link>
+            </div>
+          </CardBody>
         </Card>
       ) : (
         <ul className="grid gap-3">
-          {jobs.map((j) => (
-            <li key={j.id}>
-              <Link
-                href={`/session/${j.id}`}
-                className="block rounded-lg border border-border p-4 hover:border-accent focus-visible:border-accent"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h2 className="font-medium">{j.title || j.source_filename || j.id.slice(0, 8)}</h2>
-                  <Badge tone={statusTone(j.status)}>{t(`status.${j.status}`)}</Badge>
-                </div>
-                <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted">
-                  <span>{new Date(j.created_at).toLocaleString()}</span>
-                  {j.duration_ms ? <span>• {formatDuration(j.duration_ms)}</span> : null}
-                  {j.status === 'processing' && <span>• {j.progress}%</span>}
-                </div>
-                {j.status === 'processing' && (
-                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted/20" aria-hidden>
-                    <div className="h-full bg-accent transition-all" style={{ width: `${j.progress}%` }} />
+          {jobs.map((j) => {
+            const title = j.title || j.source_filename || j.id.slice(0, 8);
+            return (
+              <li key={j.id}>
+                <Link
+                  href={`/session/${j.id}`}
+                  className="group block rounded-xl border border-border bg-surface-1 p-4 shadow-xs transition-all hover:border-primary/40 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary">
+                      <FileAudio className="size-4" aria-hidden />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <h2 className="truncate text-sm font-semibold text-fg">{title}</h2>
+                        <Badge tone={statusTone(j.status)} dot>
+                          {t(`status.${j.status}`)}
+                        </Badge>
+                      </div>
+                      <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted-fg">
+                        <span>{new Date(j.created_at).toLocaleString()}</span>
+                        {j.duration_ms ? <span>· {formatDuration(j.duration_ms)}</span> : null}
+                        {j.status === 'processing' && <span>· {j.progress}%</span>}
+                      </div>
+                    </div>
+                    <ArrowUpRight
+                      aria-hidden
+                      className="size-4 text-muted-fg transition-colors group-hover:text-primary"
+                    />
                   </div>
-                )}
-              </Link>
-            </li>
-          ))}
+                  {j.status === 'processing' && (
+                    <div
+                      className="mt-3 h-1 overflow-hidden rounded-full bg-muted-bg"
+                      aria-hidden
+                    >
+                      <div
+                        className="h-full rounded-full bg-primary transition-all duration-500 ease-out"
+                        style={{ width: `${j.progress}%` }}
+                      />
+                    </div>
+                  )}
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

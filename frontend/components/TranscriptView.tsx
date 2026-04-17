@@ -15,24 +15,35 @@ export function TranscriptView({
   speakers: Record<string, Participant>;
 }) {
   const t = useTranslations('session');
-  if (!result.transcript?.length) return <p className="text-muted">{t('empty')}</p>;
+  if (!result.transcript?.length) {
+    return (
+      <p className="rounded-lg border border-dashed border-border bg-surface-2/40 p-6 text-center text-sm text-muted-fg">
+        {t('empty')}
+      </p>
+    );
+  }
   return (
-    <ol className="space-y-3">
+    <ol className="space-y-2">
       {result.transcript.map((s: TranscriptSegment, i) => {
         const label = speakers[s.speaker]?.label || s.speaker;
         const role = speakers[s.speaker]?.role;
         return (
-          <li key={i} className="rounded-md border border-border p-3">
-            <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
-              <span className="font-mono">[{mmss(s.start_time)}]</span>
-              <span className="font-medium text-fg">{label}</span>
+          <li
+            key={i}
+            className="rounded-lg border border-border bg-surface-1 p-3 transition-colors hover:border-border/80"
+          >
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-fg">
+              <span className="font-mono">{mmss(s.start_time)}</span>
+              <span className="font-semibold text-fg">{label}</span>
               {role && <span>· {role}</span>}
               {s.language && <span>· {s.language}</span>}
               {typeof s.confidence === 'number' && (
-                <span className="ml-auto">{Math.round(s.confidence * 100)}%</span>
+                <span className="ml-auto tabular-nums">
+                  {Math.round(s.confidence * 100)}%
+                </span>
               )}
             </div>
-            <p className="mt-1 captions whitespace-pre-wrap">{s.text}</p>
+            <p className="mt-1 captions whitespace-pre-wrap text-sm text-fg">{s.text}</p>
           </li>
         );
       })}

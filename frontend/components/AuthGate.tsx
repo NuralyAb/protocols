@@ -20,7 +20,14 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     if (token && !user) fetchMe().catch(() => {});
   }, [hydrated, token, user, pathname, isPublic, router, fetchMe]);
 
-  if (!hydrated) return <div className="p-8 text-muted">…</div>;
+  if (!hydrated) {
+    return (
+      <div className="space-y-3" aria-busy>
+        <div className="h-8 w-40 animate-pulse rounded-md bg-muted-bg" />
+        <div className="h-24 animate-pulse rounded-xl border border-border bg-surface-2/50" />
+      </div>
+    );
+  }
   if (!token && !isPublic) return null;
   return <>{children}</>;
 }

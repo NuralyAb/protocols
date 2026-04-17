@@ -2,8 +2,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { CheckCircle2, ListChecks, FileText } from 'lucide-react';
 import { jobsApi, type JobBrief, type Participant } from '@/lib/api';
-import { Card, Badge } from '@/components/ui/Card';
+import {
+  Badge,
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardBody,
+} from '@/components/ui/Card';
 import { useAuth } from '@/lib/auth';
 import { useToasts } from '@/components/ui/Toast';
 import { TranscriptView } from '@/components/TranscriptView';
@@ -47,8 +55,16 @@ export default function SessionPage() {
     return Object.fromEntries(r.map((p) => [p.id, p]));
   }, [job]);
 
-  if (loading) return <p className="text-muted">…</p>;
-  if (!job) return <p className="text-muted">Not found</p>;
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <div className="h-8 w-48 animate-pulse rounded-md bg-muted-bg" />
+        <div className="h-24 animate-pulse rounded-xl border border-border bg-surface-2/50" />
+        <div className="h-40 animate-pulse rounded-xl border border-border bg-surface-2/50" />
+      </div>
+    );
+  }
+  if (!job) return <p className="text-muted-fg">Not found</p>;
 
   const statusTone = job.status === 'completed' ? 'success' : job.status === 'failed' ? 'danger' : 'info';
 
@@ -57,20 +73,32 @@ export default function SessionPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">{job.title || job.source_filename || 'Protocol'}</h1>
-          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted">
-            <Badge tone={statusTone}>{t(`status.${job.status}`)}</Badge>
-            {job.status === 'processing' && <span>{job.progress}%</span>}
-            {meta?.duration_ms ? <span>• {Math.round(meta.duration_ms / 1000)}s</span> : null}
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0 space-y-2">
+          <h1 className="truncate text-2xl font-semibold tracking-tight">
+            {job.title || job.source_filename || 'Protocol'}
+          </h1>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-fg">
+            <Badge tone={statusTone} dot>{t(`status.${job.status}`)}</Badge>
+            {job.status === 'processing' && (
+              <span className="tabular-nums">{job.progress}%</span>
+            )}
+            {meta?.duration_ms ? (
+              <span>· {Math.round(meta.duration_ms / 1000)}s</span>
+            ) : null}
             {meta?.languages_detected?.length ? (
-              <span>• {meta.languages_detected.join(', ')}</span>
+              <span>· {meta.languages_detected.join(', ').toUpperCase()}</span>
             ) : null}
           </div>
           {job.status === 'processing' && (
-            <div className="mt-2 h-1.5 w-64 overflow-hidden rounded-full bg-muted/20" aria-hidden>
-              <div className="h-full bg-accent transition-all" style={{ width: `${job.progress}%` }} />
+            <div
+              className="h-1 w-64 overflow-hidden rounded-full bg-muted-bg"
+              aria-hidden
+            >
+              <div
+                className="h-full rounded-full bg-primary transition-all duration-500"
+                style={{ width: `${job.progress}%` }}
+              />
             </div>
           )}
         </div>
@@ -81,51 +109,74 @@ export default function SessionPage() {
 
       {proto?.title || proto?.agenda?.length ? (
         <Card>
-          {proto.title && <h2 className="text-lg font-semibold">{proto.title}</h2>}
-          {proto.date && <p className="text-sm text-muted">{proto.date}</p>}
-          {proto.agenda?.length ? (
-            <>
-              <h3 className="mt-4 font-medium">{t('agenda')}</h3>
-              <ol className="mt-1 list-decimal pl-5">
+          <CardHeader>
+            {proto?.title && <CardTitle>{proto.title}</CardTitle>}
+            {proto?.date && <CardDescription>{proto.date}</CardDescription>}
+          </CardHeader>
+          {proto?.agenda?.length ? (
+            <CardBody>
+              <h3 className="mb-2 text-sm font-medium text-muted-fg">{t('agenda')}</h3>
+              <ol className="list-decimal space-y-1 pl-5 text-sm text-fg marker:text-muted-fg">
                 {proto.agenda.map((a, i) => (
                   <li key={i}>{a}</li>
                 ))}
               </ol>
-            </>
+            </CardBody>
           ) : null}
         </Card>
       ) : null}
 
       {proto?.decisions?.length ? (
         <Card>
-          <h3 className="font-medium">{t('decisions')}</h3>
-          <ol className="mt-2 list-decimal space-y-1 pl-5">
-            {proto.decisions.map((d, i) => (
-              <li key={i}>
-                {d.text}
-                {d.votes && (
-                  <span className="ml-2 text-xs text-muted">
-                    ({t('voteFor')}: {d.votes.for ?? 0} · {t('voteAgainst')}: {d.votes.against ?? 0} · {t('voteAbstain')}: {d.votes.abstain ?? 0})
-                  </span>
-                )}
-              </li>
-            ))}
-          </ol>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CheckCircle2 className="size-4 text-success" aria-hidden />
+              {t('decisions')}
+            </CardTitle>
+          </CardHeader>
+          <CardBody>
+            <ol className="list-decimal space-y-2 pl-5 text-sm text-fg marker:text-muted-fg">
+              {proto.decisions.map((d, i) => (
+                <li key={i}>
+                  <span>{d.text}</span>
+                  {d.votes && (
+                    <span className="ml-2 text-xs text-muted-fg">
+                      ({t('voteFor')}: {d.votes.for ?? 0} · {t('voteAgainst')}: {d.votes.against ?? 0} · {t('voteAbstain')}: {d.votes.abstain ?? 0})
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ol>
+          </CardBody>
         </Card>
       ) : null}
 
       {proto?.action_items?.length ? (
         <Card>
-          <h3 className="font-medium">{t('actions')}</h3>
-          <ul className="mt-2 space-y-1 text-sm">
-            {proto.action_items.map((a, i) => (
-              <li key={i}>
-                <strong>{a.task}</strong>
-                {a.assignee ? ` — ${a.assignee}` : ''}
-                {a.deadline ? ` · ${a.deadline}` : ''}
-              </li>
-            ))}
-          </ul>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ListChecks className="size-4 text-primary" aria-hidden />
+              {t('actions')}
+            </CardTitle>
+          </CardHeader>
+          <CardBody>
+            <ul className="space-y-2 text-sm">
+              {proto.action_items.map((a, i) => (
+                <li
+                  key={i}
+                  className="flex flex-wrap items-baseline gap-x-2 gap-y-1 rounded-lg border border-border bg-surface-1 px-3 py-2"
+                >
+                  <span className="font-medium text-fg">{a.task}</span>
+                  {a.assignee ? (
+                    <span className="text-muted-fg">— {a.assignee}</span>
+                  ) : null}
+                  {a.deadline ? (
+                    <Badge tone="neutral" className="ml-auto">{a.deadline}</Badge>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </CardBody>
         </Card>
       ) : null}
 
@@ -135,7 +186,12 @@ export default function SessionPage() {
 
       {job.result ? (
         <section aria-labelledby="tr-head">
-          <h3 id="tr-head" className="mb-2 text-lg font-medium">{t('transcript')}</h3>
+          <div className="mb-3 flex items-center gap-2">
+            <FileText className="size-4 text-muted-fg" aria-hidden />
+            <h3 id="tr-head" className="text-base font-semibold tracking-tight">
+              {t('transcript')}
+            </h3>
+          </div>
           <TranscriptView result={job.result} speakers={speakersById} />
         </section>
       ) : null}

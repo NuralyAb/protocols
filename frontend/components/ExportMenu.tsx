@@ -1,5 +1,6 @@
 'use client';
 import { useTranslations } from 'next-intl';
+import { Download } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { jobsApi } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -11,7 +12,6 @@ export function ExportMenu({ jobId, title }: { jobId: string; title?: string | n
   const token = useAuth((s) => s.token);
 
   async function download(format: (typeof FORMATS)[number]) {
-    // Need auth header — can't just use a plain <a>. Fetch, blob, anchor trick.
     const res = await fetch(jobsApi.exportUrl(jobId, format), {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -28,9 +28,23 @@ export function ExportMenu({ jobId, title }: { jobId: string; title?: string | n
   }
 
   return (
-    <div className="flex flex-wrap gap-2" role="group" aria-label={t('aria')}>
+    <div
+      className="flex flex-wrap items-center gap-1.5 rounded-lg border border-border bg-surface-1 p-1"
+      role="group"
+      aria-label={t('aria')}
+    >
+      <span className="flex items-center gap-1.5 px-2 text-xs font-medium text-muted-fg">
+        <Download className="size-3.5" aria-hidden />
+        Export
+      </span>
       {FORMATS.map((f) => (
-        <Button key={f} variant="secondary" size="sm" onClick={() => download(f)}>
+        <Button
+          key={f}
+          variant="ghost"
+          size="sm"
+          onClick={() => download(f)}
+          className="h-7 px-2.5 text-xs"
+        >
           {f.toUpperCase()}
         </Button>
       ))}

@@ -1,12 +1,11 @@
 'use client';
 import { useEffect, useRef } from 'react';
 
-/** Live frequency-bar visualization driven by a pull-based `read()` callback. */
 export function Waveform({
   read,
   active,
-  bins = 32,
-  height = 40,
+  bins = 48,
+  height = 56,
 }: {
   read: (bins: number) => Float32Array;
   active: boolean;
@@ -25,6 +24,14 @@ export function Waveform({
       return;
     }
 
+    function readColor() {
+      const styles = getComputedStyle(document.documentElement);
+      const v = styles.getPropertyValue('--primary').trim() || '231 70% 55%';
+      return `hsl(${v})`;
+    }
+
+    const color = readColor();
+
     function tick() {
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -41,14 +48,16 @@ export function Waveform({
       ctx.clearRect(0, 0, w, h);
 
       const data = read(bins);
-      const barW = Math.max(1, (w - (bins - 1) * 2) / bins);
+      const gap = 3;
+      const barW = Math.max(2, (w - (bins - 1) * gap) / bins);
+      ctx.fillStyle = color;
       for (let i = 0; i < bins; i++) {
         const amp = data[i] ?? 0;
-        const bh = Math.max(2, amp * h);
-        const x = i * (barW + 2);
+        const bh = Math.max(3, amp * h * 0.9);
+        const x = i * (barW + gap);
         const y = (h - bh) / 2;
-        ctx.fillStyle = `hsl(${210 + amp * 40} 85% ${35 + amp * 25}%)`;
-        ctx.fillRect(x, y, barW, bh);
+        const r = Math.min(barW / 2, 3);
+        roundRect(ctx, x, y, barW, bh, r);
       }
       rafRef.current = requestAnimationFrame(tick);
     }
@@ -64,7 +73,25 @@ export function Waveform({
       aria-label="microphone level"
       role="img"
       style={{ width: '100%', height }}
-      className="rounded-md border border-border bg-muted/10"
+      className="rounded-xl border border-border bg-surface-1"
     />
   );
+}
+
+function roundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number
+) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+  ctx.fill();
 }

@@ -2,11 +2,13 @@
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { UploadCloud, FileAudio, X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
-import { Input } from '@/components/ui/Input';
+import { Card, CardBody, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
+import { Input, Field, Chip } from '@/components/ui/Input';
 import { useToasts } from '@/components/ui/Toast';
 import { jobsApi } from '@/lib/api';
+import { cn } from '@/lib/cn';
 
 const ACCEPT = '.wav,.mp3,.m4a,.ogg,.flac,.webm,audio/*';
 
@@ -52,20 +54,20 @@ export default function UploadPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold">{t('title')}</h1>
-        <p className="text-muted">{t('subtitle')}</p>
+    <div className="mx-auto w-full max-w-2xl space-y-6">
+      <header className="space-y-1">
+        <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
+        <p className="text-muted-fg">{t('subtitle')}</p>
       </header>
 
-      <form onSubmit={onSubmit} className="space-y-5">
-        <Card
+      <form onSubmit={onSubmit} className="space-y-6">
+        <div
           role="button"
           tabIndex={0}
           aria-label={t('dropzoneAria')}
-          onClick={() => inputRef.current?.click()}
+          onClick={() => !file && inputRef.current?.click()}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
+            if (!file && (e.key === 'Enter' || e.key === ' ')) {
               e.preventDefault();
               inputRef.current?.click();
             }
@@ -80,10 +82,15 @@ export default function UploadPage() {
             setDragging(false);
             onPick(e.dataTransfer.files[0] ?? null);
           }}
-          className={
-            'cursor-pointer text-center transition ' +
-            (dragging ? 'border-accent bg-accent/5' : '')
-          }
+          className={cn(
+            'relative flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-10 text-center transition-colors',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
+            dragging
+              ? 'border-primary bg-primary-soft'
+              : file
+              ? 'border-border bg-surface-1'
+              : 'border-border bg-surface-1 hover:border-primary/50 hover:bg-surface-2/40 cursor-pointer'
+          )}
         >
           <input
             ref={inputRef}
@@ -92,51 +99,78 @@ export default function UploadPage() {
             onChange={(e) => onPick(e.target.files?.[0] ?? null)}
             className="sr-only"
           />
-          <p className="text-base font-medium">{file ? file.name : t('dropzone')}</p>
-          <p className="mt-1 text-xs text-muted">{t('formats')}</p>
-          {file && (
-            <p className="mt-1 text-xs text-muted">
-              {(file.size / 1024 / 1024).toFixed(1)} MB
-            </p>
-          )}
-        </Card>
 
-        <label className="block">
-          <span className="mb-1 block text-sm">{t('titleLabel')}</span>
+          {file ? (
+            <div className="flex w-full items-center gap-3 text-left">
+              <div className="flex size-10 items-center justify-center rounded-lg bg-primary-soft text-primary">
+                <FileAudio className="size-5" aria-hidden />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{file.name}</p>
+                <p className="text-xs text-muted-fg">{(file.size / 1024 / 1024).toFixed(1)} MB</p>
+              </div>
+              {!uploading && (
+                <button
+                  type="button"
+                  onClick={() => setFile(null)}
+                  className="rounded-md p-1.5 text-muted-fg transition-colors hover:bg-muted-bg hover:text-danger"
+                  aria-label={t('reset')}
+                >
+                  <X className="size-4" />
+                </button>
+              )}
+            </div>
+          ) : (
+            <>
+              <div className="flex size-12 items-center justify-center rounded-full bg-primary-soft text-primary">
+                <UploadCloud className="size-6" aria-hidden />
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-fg">{t('dropzone')}</p>
+                <p className="text-xs text-muted-fg">{t('formats')}</p>
+              </div>
+            </>
+          )}
+        </div>
+
+        <Field label={t('titleLabel')} htmlFor="title">
           <Input
+            id="title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder={t('titlePlaceholder')}
           />
-        </label>
+        </Field>
 
         <fieldset className="space-y-2">
           <legend className="text-sm font-medium">{t('languages')}</legend>
-          <div className="flex gap-4">
+          <div className="flex flex-wrap gap-2">
             {(['kk', 'ru', 'en'] as const).map((k) => (
-              <label key={k} className="inline-flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={langs[k]}
-                  onChange={(e) => setLangs((s) => ({ ...s, [k]: e.target.checked }))}
-                />
-                <span>{k.toUpperCase()}</span>
-              </label>
+              <Chip
+                key={k}
+                active={langs[k]}
+                onClick={() => setLangs((s) => ({ ...s, [k]: !s[k] }))}
+              >
+                {k.toUpperCase()}
+              </Chip>
             ))}
           </div>
-          <p className="text-xs text-muted">{t('languagesHint')}</p>
+          <p className="text-xs text-muted-fg">{t('languagesHint')}</p>
         </fieldset>
 
         {uploading && (
-          <div className="space-y-1">
-            <div className="h-2 overflow-hidden rounded-full bg-muted/20">
-              <div className="h-full bg-accent transition-all" style={{ width: `${progress}%` }} />
+          <div className="space-y-1.5">
+            <div className="h-1.5 overflow-hidden rounded-full bg-muted-bg" aria-hidden>
+              <div
+                className="h-full rounded-full bg-primary transition-all duration-300 ease-out"
+                style={{ width: `${progress}%` }}
+              />
             </div>
-            <p className="text-xs text-muted">{t('uploading', { pct: progress })}</p>
+            <p className="text-xs text-muted-fg">{t('uploading', { pct: progress })}</p>
           </div>
         )}
 
-        <div className="flex gap-3">
+        <div className="flex items-center gap-3 pt-1">
           <Button type="submit" loading={uploading} disabled={!file}>
             {t('submit')}
           </Button>

@@ -1,9 +1,17 @@
 'use client';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { Mic, Square, Radio } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { Card, Badge } from '@/components/ui/Card';
-import { Input } from '@/components/ui/Input';
+import {
+  Card,
+  CardBody,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  Badge,
+} from '@/components/ui/Card';
+import { Input, Select, Field, Chip } from '@/components/ui/Input';
 import { useAuth } from '@/lib/auth';
 import { useToasts } from '@/components/ui/Toast';
 import {
@@ -15,6 +23,7 @@ import {
 } from '@/lib/api';
 import { startMic, type MicStream } from '@/lib/mic';
 import { Waveform } from '@/components/Waveform';
+import { cn } from '@/lib/cn';
 
 type Segment = {
   id: number;
@@ -31,6 +40,13 @@ function mmss(ms: number) {
   const s = Math.floor(ms / 1000);
   return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 }
+
+const PROVIDER_LABELS: Record<AsrProvider, string> = {
+  openai: 'OpenAI',
+  hf_kazakh: 'HF Kazakh',
+  local_kazakh: 'Local Kazakh',
+  local: 'Local GPU',
+};
 
 export default function LivePage() {
   const t = useTranslations('live');
@@ -155,7 +171,6 @@ export default function LivePage() {
             setPartial('');
             setSegments((rs) => {
               const copy = [...rs];
-              // Prefer exact start_ms/end_ms match; fall back to OLDEST pending.
               let idx = copy.findIndex(
                 (r) => r.pending && r.start_ms === data.start_ms && r.end_ms === data.end_ms
               );
@@ -182,7 +197,6 @@ export default function LivePage() {
       ws.onclose = (e) => {
         wsRef.current = null;
         if (userStoppedRef.current) return;
-        // Auto-reconnect with exponential backoff (if the user didn't stop)
         if (opened && micRef.current?.isRunning()) {
           const attempt = Math.min(reconnectAttemptRef.current + 1, 6);
           reconnectAttemptRef.current = attempt;
@@ -190,15 +204,13 @@ export default function LivePage() {
           setReconnecting(true);
           reconnectTimerRef.current = setTimeout(() => {
             if (userStoppedRef.current) return;
-            connectWs(sessionId, () => {}); // reconnect silently
+            connectWs(sessionId, () => {});
           }, delay);
         } else if (!opened) {
           push('error', `WS closed (${e.code})`);
         }
       };
-      ws.onerror = () => {
-        // `onclose` will fire right after — handled there.
-      };
+      ws.onerror = () => {};
     },
     [token, wsUrl, push]
   );
@@ -231,7 +243,6 @@ export default function LivePage() {
 
   useEffect(() => () => { stop(); }, [stop]);
 
-  // Autoscroll: stick to bottom when near bottom; otherwise respect user's scroll.
   const onScroll = useCallback(() => {
     const el = transcriptListRef.current;
     if (!el) return;
@@ -301,75 +312,95 @@ export default function LivePage() {
 
   if (!session) {
     return (
-      <div className="mx-auto max-w-xl space-y-5">
-        <h1 className="text-2xl font-semibold">{t('title')}</h1>
-        <p className="text-muted">{t('subtitle')}</p>
-        <Card className="space-y-4">
-          <label className="block">
-            <span className="mb-1 block text-sm">{t('sessionTitle')}</span>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('sessionTitlePh')} />
-          </label>
-          <fieldset>
-            <legend className="text-sm font-medium">{t('languages')}</legend>
-            <div className="mt-1 flex gap-4">
-              {(['kk', 'ru', 'en'] as const).map((k) => (
-                <label key={k} className="inline-flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={langs[k]}
-                    onChange={(e) => setLangs((s) => ({ ...s, [k]: e.target.checked }))}
-                  />
-                  <span>{k.toUpperCase()}</span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
-          <label className="block">
-            <span className="mb-1 block text-sm font-medium">{t('providerLabel')}</span>
-            <select
-              value={provider}
-              onChange={(e) => setProvider(e.target.value as AsrProvider)}
-              className="h-10 w-full rounded-md border border-border bg-transparent px-2 text-sm"
+      <div className="mx-auto w-full max-w-xl space-y-6">
+        <header className="space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
+          <p className="text-muted-fg">{t('subtitle')}</p>
+        </header>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>New session</CardTitle>
+            <CardDescription>
+              Choose languages and provider before starting to record.
+            </CardDescription>
+          </CardHeader>
+          <CardBody className="space-y-5">
+            <Field label={t('sessionTitle')} htmlFor="session-title">
+              <Input
+                id="session-title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder={t('sessionTitlePh')}
+              />
+            </Field>
+
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-medium">{t('languages')}</legend>
+              <div className="flex flex-wrap gap-2">
+                {(['kk', 'ru', 'en'] as const).map((k) => (
+                  <Chip
+                    key={k}
+                    active={langs[k]}
+                    onClick={() => setLangs((s) => ({ ...s, [k]: !s[k] }))}
+                  >
+                    {k.toUpperCase()}
+                  </Chip>
+                ))}
+              </div>
+            </fieldset>
+
+            <Field
+              label={t('providerLabel')}
+              htmlFor="provider"
+              hint={
+                provider === 'openai'
+                  ? t('providerOpenaiHint')
+                  : provider === 'hf_kazakh'
+                  ? t('providerHfKazakhHint')
+                  : provider === 'local_kazakh'
+                  ? t('providerLocalKazakhHint')
+                  : t('providerLocalHint')
+              }
             >
-              <option value="openai">{t('providerOpenai')}</option>
-              <option value="hf_kazakh">{t('providerHfKazakh')}</option>
-              <option value="local_kazakh">{t('providerLocalKazakh')}</option>
-              <option value="local">{t('providerLocal')}</option>
-            </select>
-            <span className="mt-1 block text-xs text-muted">
-              {provider === 'openai'
-                ? t('providerOpenaiHint')
-                : provider === 'hf_kazakh'
-                ? t('providerHfKazakhHint')
-                : provider === 'local_kazakh'
-                ? t('providerLocalKazakhHint')
-                : t('providerLocalHint')}
-            </span>
-          </label>
-          <Button onClick={create}>{t('createSession')}</Button>
+              <Select
+                id="provider"
+                value={provider}
+                onChange={(e) => setProvider(e.target.value as AsrProvider)}
+              >
+                <option value="openai">{t('providerOpenai')}</option>
+                <option value="hf_kazakh">{t('providerHfKazakh')}</option>
+                <option value="local_kazakh">{t('providerLocalKazakh')}</option>
+                <option value="local">{t('providerLocal')}</option>
+              </Select>
+            </Field>
+          </CardBody>
+          <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-3">
+            <Button onClick={create}>
+              <Radio /> {t('createSession')}
+            </Button>
+          </div>
         </Card>
       </div>
     );
   }
 
   return (
-    <div className="space-y-5">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">{session.title || t('title')}</h1>
-          <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
-            <span>{session.id}</span>
-            <span>• {session.languages?.join(', ')}</span>
+    <div className="space-y-6">
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {session.title || t('title')}
+          </h1>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-fg">
+            <span className="font-mono">{session.id.slice(0, 8)}</span>
+            <span aria-hidden>•</span>
+            <span>{session.languages?.join(', ').toUpperCase()}</span>
             {session.asr_provider && (
-              <Badge tone={session.asr_provider === 'openai' ? 'info' : 'neutral'}>
-                {session.asr_provider === 'openai'
-                  ? 'OpenAI'
-                  : session.asr_provider === 'hf_kazakh'
-                  ? 'HF Kazakh'
-                  : session.asr_provider === 'local_kazakh'
-                  ? 'Local Kazakh'
-                  : 'Local GPU'}
-              </Badge>
+              <>
+                <span aria-hidden>•</span>
+                <Badge tone="neutral">{PROVIDER_LABELS[session.asr_provider]}</Badge>
+              </>
             )}
           </div>
         </div>
@@ -377,14 +408,18 @@ export default function LivePage() {
           {recording ? (
             <>
               {reconnecting ? (
-                <Badge tone="warning">{t('reconnecting')}</Badge>
+                <Badge tone="warning" dot>{t('reconnecting')}</Badge>
               ) : (
-                <Badge tone="danger">● {t('recording')}</Badge>
+                <Badge tone="danger" dot>{t('recording')}</Badge>
               )}
-              <Button variant="danger" onClick={stop}>{t('stop')}</Button>
+              <Button variant="danger" onClick={stop}>
+                <Square /> {t('stop')}
+              </Button>
             </>
           ) : (
-            <Button onClick={start} loading={connecting}>{t('start')}</Button>
+            <Button onClick={start} loading={connecting}>
+              <Mic /> {t('start')}
+            </Button>
           )}
         </div>
       </header>
@@ -397,101 +432,123 @@ export default function LivePage() {
       )}
 
       <Card>
-        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-medium">{t('liveTranscript')}</h2>
-          <div className="flex flex-wrap gap-2">
+        <CardHeader className="flex-row flex-wrap items-center justify-between gap-3">
+          <div>
+            <CardTitle>{t('liveTranscript')}</CardTitle>
+            <CardDescription>Snapshot export in any format.</CardDescription>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
             {(['pdf', 'docx', 'json', 'txt', 'srt', 'vtt'] as const).map((f) => (
-              <Button key={f} variant="secondary" size="sm" onClick={() => downloadSnapshot(f)}>
+              <Button
+                key={f}
+                variant="outline"
+                size="sm"
+                onClick={() => downloadSnapshot(f)}
+              >
                 {f.toUpperCase()}
               </Button>
             ))}
           </div>
-        </div>
-        {partial && (
-          <p className="mb-2 rounded-md border border-dashed border-border bg-muted/10 p-2 text-sm italic text-muted">
-            {partial}<span className="animate-pulse">▍</span>
-          </p>
-        )}
-        {segments.length === 0 && !partial ? (
-          <p className="text-muted">{t('empty')}</p>
-        ) : segments.length === 0 ? null : (
-          <ol
-            ref={transcriptListRef}
-            onScroll={onScroll}
-            aria-live="polite"
-            className="max-h-[60vh] space-y-2 overflow-y-auto scroll-smooth"
-          >
-            {segments.map((s) => (
-              <li
-                key={s.id}
-                className={
-                  'rounded-md border border-border p-2 ' + (s.pending ? 'opacity-60' : '')
-                }
-              >
-                <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
-                  <span className="font-mono">[{mmss(s.start_ms)}]</span>
-                  <span className="font-medium text-fg">{s.speaker}</span>
-                  {s.language && <span>· {s.language}</span>}
-                  {typeof s.confidence === 'number' && (
-                    <span className="ml-auto">{Math.round(s.confidence * 100)}%</span>
+        </CardHeader>
+        <CardBody>
+          {partial && (
+            <p className="mb-3 rounded-lg border border-dashed border-border bg-surface-2/60 p-3 text-sm italic text-muted-fg">
+              {partial}
+              <span className="ml-0.5 inline-block w-[1ch] animate-pulse">▍</span>
+            </p>
+          )}
+          {segments.length === 0 && !partial ? (
+            <p className="py-8 text-center text-sm text-muted-fg">{t('empty')}</p>
+          ) : segments.length === 0 ? null : (
+            <ol
+              ref={transcriptListRef}
+              onScroll={onScroll}
+              aria-live="polite"
+              className="max-h-[60vh] space-y-2 overflow-y-auto pr-1 scroll-smooth"
+            >
+              {segments.map((s) => (
+                <li
+                  key={s.id}
+                  className={cn(
+                    'rounded-lg border border-border bg-surface-1 p-3 transition-opacity',
+                    s.pending && 'opacity-60'
                   )}
-                </div>
-                <p className="mt-1 captions whitespace-pre-wrap">
-                  {s.text}
-                  {s.pending && <span className="animate-pulse"> …</span>}
-                </p>
-              </li>
-            ))}
-          </ol>
-        )}
+                >
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-fg">
+                    <span className="font-mono">{mmss(s.start_ms)}</span>
+                    <span className="font-semibold text-fg">{s.speaker}</span>
+                    {s.language && <span>· {s.language}</span>}
+                    {typeof s.confidence === 'number' && (
+                      <span className="ml-auto tabular-nums">
+                        {Math.round(s.confidence * 100)}%
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 captions whitespace-pre-wrap text-sm text-fg">
+                    {s.text}
+                    {s.pending && <span className="animate-pulse"> …</span>}
+                  </p>
+                </li>
+              ))}
+            </ol>
+          )}
+        </CardBody>
       </Card>
 
       {!recording && segments.filter((s) => !s.pending).length > 0 && (
         <Card>
-          <h2 className="mb-2 font-medium">{t('protocol.sectionTitle')}</h2>
-          <p className="mb-3 text-sm text-muted">{t('protocol.hint')}</p>
-          <div className="flex flex-wrap items-end gap-3">
-            <label className="flex-1 min-w-[220px]">
-              <span className="mb-1 block text-sm">{t('protocol.templateLabel')}</span>
-              <select
-                value={templateId}
-                onChange={(e) => setTemplateId(e.target.value)}
-                className="h-10 w-full rounded-md border border-border bg-transparent px-2 text-sm"
+          <CardHeader>
+            <CardTitle>{t('protocol.sectionTitle')}</CardTitle>
+            <CardDescription>{t('protocol.hint')}</CardDescription>
+          </CardHeader>
+          <CardBody className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
+              <Field label={t('protocol.templateLabel')} htmlFor="tpl">
+                <Select
+                  id="tpl"
+                  value={templateId}
+                  onChange={(e) => setTemplateId(e.target.value)}
+                >
+                  {templates.length === 0 && (
+                    <option value="">{t('protocol.pickTemplate')}</option>
+                  )}
+                  {templates.map((tpl) => (
+                    <option key={tpl.id} value={tpl.id}>
+                      {tpl.name}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field label={t('protocol.formatLabel')} htmlFor="fmt">
+                <Select
+                  id="fmt"
+                  value={protoFormat}
+                  onChange={(e) => setProtoFormat(e.target.value as ProtocolFormat)}
+                >
+                  <option value="markdown">Markdown</option>
+                  <option value="docx">DOCX</option>
+                  <option value="pdf">PDF</option>
+                </Select>
+              </Field>
+              <Button
+                onClick={generateProtocol}
+                loading={protoLoading}
+                disabled={!templateId}
               >
-                {templates.length === 0 && <option value="">{t('protocol.pickTemplate')}</option>}
-                {templates.map((tpl) => (
-                  <option key={tpl.id} value={tpl.id}>
-                    {tpl.name}
-                  </option>
-                ))}
-              </select>
-              {templateId && (
-                <span className="mt-1 block text-xs text-muted">
-                  {templates.find((x) => x.id === templateId)?.description}
-                </span>
-              )}
-            </label>
-            <label>
-              <span className="mb-1 block text-sm">{t('protocol.formatLabel')}</span>
-              <select
-                value={protoFormat}
-                onChange={(e) => setProtoFormat(e.target.value as ProtocolFormat)}
-                className="h-10 rounded-md border border-border bg-transparent px-2 text-sm"
-              >
-                <option value="markdown">Markdown</option>
-                <option value="docx">DOCX</option>
-                <option value="pdf">PDF</option>
-              </select>
-            </label>
-            <Button onClick={generateProtocol} loading={protoLoading} disabled={!templateId}>
-              {protoLoading ? t('protocol.generating') : t('protocol.generateBtn')}
-            </Button>
-          </div>
-          {protoMarkdown && (
-            <pre className="mt-4 max-h-[60vh] overflow-auto whitespace-pre-wrap rounded-md border border-border bg-muted/10 p-3 text-sm">
-              {protoMarkdown}
-            </pre>
-          )}
+                {protoLoading ? t('protocol.generating') : t('protocol.generateBtn')}
+              </Button>
+            </div>
+            {templateId && (
+              <p className="text-xs text-muted-fg">
+                {templates.find((x) => x.id === templateId)?.description}
+              </p>
+            )}
+            {protoMarkdown && (
+              <pre className="max-h-[60vh] overflow-auto whitespace-pre-wrap rounded-lg border border-border bg-surface-2/50 p-4 font-mono text-xs text-fg">
+                {protoMarkdown}
+              </pre>
+            )}
+          </CardBody>
         </Card>
       )}
     </div>
