@@ -23,6 +23,7 @@ class UserState:
     session_id: str | None = None
     session_title: str | None = None
     session_fid: str | None = None
+    session_kind: str = "session"  # "session" (live) or "job" (uploaded audio)
     lang: Lang = "ru"
 
 
@@ -111,20 +112,35 @@ async def cmd_last(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     except BackendError as e:
         await msg.reply_text(t("qa_fail", lang, error=e.detail))
         return
-    if not sessions:
+    try:
+        jobs = await api.list_jobs(state.token, limit=10)
+    except BackendError as e:
+        await msg.reply_text(t("qa_fail", lang, error=e.detail))
+        return
+    if not sessions and not jobs:
         await msg.reply_text(t("last_empty", lang))
         return
+
+    def _fmt_dt(raw: str) -> str:
+        try:
+            return datetime.fromisoformat(raw.replace("Z", "+00:00")).strftime("%d.%m %H:%M")
+        except Exception:  # noqa: BLE001
+            return (raw or "")[:16]
+
     lines = [t("last_header", lang)]
     for s in sessions:
         title = s.get("title") or s["id"][:8]
         fid = s.get("friendly_id") or "—"
-        started = s.get("started_at") or ""
-        try:
-            started_fmt = datetime.fromisoformat(started.replace("Z", "+00:00")).strftime("%d.%m %H:%M")
-        except Exception:  # noqa: BLE001
-            started_fmt = started[:16]
+        started_fmt = _fmt_dt(s.get("started_at") or "")
         status = "🔴" if s.get("is_active") else "✅"
         lines.append(f"{status} `{fid}` · {title} · {started_fmt}")
+    for j in jobs:
+        title = j.get("title") or j.get("source_filename") or j["id"][:8]
+        fid = j.get("friendly_id") or "—"
+        started_fmt = _fmt_dt(j.get("created_at") or "")
+        st = j.get("status") or "pending"
+        icon = {"completed": "📄", "processing": "⏳", "pending": "⏳", "failed": "❌"}.get(st, "📄")
+        lines.append(f"{icon} `{fid}` · {title} · {started_fmt}")
     await msg.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN)
 
 
@@ -142,17 +158,32 @@ async def cmd_use(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         await msg.reply_text(t("use_usage", lang))
         return
     fid = args[0].strip()
+    # Try live session first, fall back to uploaded job.
+    entity: dict | None = None
+    kind = "session"
     try:
-        session = await api.session_by_friendly_id(state.token, fid)
+        entity = await api.session_by_friendly_id(state.token, fid)
     except BackendError as e:
-        if e.status == 404:
-            await msg.reply_text(t("not_found", lang))
-        else:
+        if e.status != 404:
             await msg.reply_text(t("qa_fail", lang, error=e.detail))
-        return
-    state.session_id = session["id"]
-    state.session_fid = session.get("friendly_id") or fid
-    state.session_title = session.get("title") or f"Live · {session['id'][:8]}"
+            return
+    if entity is None:
+        try:
+            entity = await api.job_by_friendly_id(state.token, fid)
+            kind = "job"
+        except BackendError as e:
+            if e.status == 404:
+                await msg.reply_text(t("not_found", lang))
+            else:
+                await msg.reply_text(t("qa_fail", lang, error=e.detail))
+            return
+    state.session_id = entity["id"]
+    state.session_fid = entity.get("friendly_id") or fid
+    if kind == "job":
+        state.session_title = entity.get("title") or entity.get("source_filename") or f"Job · {entity['id'][:8]}"
+    else:
+        state.session_title = entity.get("title") or f"Live · {entity['id'][:8]}"
+    state.session_kind = kind
     await msg.reply_text(
         t("use_ok", lang, title=state.session_title, fid=state.session_fid),
         parse_mode=ParseMode.MARKDOWN,
@@ -167,6 +198,7 @@ async def cmd_change(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     state.session_id = None
     state.session_fid = None
     state.session_title = None
+    state.session_kind = "session"
     await msg.reply_text(t("change_prompt", state.lang))
 
 
@@ -196,7 +228,14 @@ async def cmd_protocol(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     tpl_id = templates[0]["id"]
 
     try:
-        pdf_bytes = await api.generate_protocol(state.token, state.session_id, tpl_id, fmt="pdf")
+        if state.session_kind == "job":
+            pdf_bytes = await api.generate_job_protocol(
+                state.token, state.session_id, tpl_id, fmt="pdf"
+            )
+        else:
+            pdf_bytes = await api.generate_protocol(
+                state.token, state.session_id, tpl_id, fmt="pdf"
+            )
     except BackendError as e:
         await msg.reply_text(t("protocol_fail", lang, error=e.detail))
         return
@@ -231,7 +270,10 @@ async def cmd_insights(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
 
     await msg.reply_text(t("qa_thinking", lang))
     try:
-        data = await api.insights(state.token, state.session_id)
+        if state.session_kind == "job":
+            data = await api.job_insights(state.token, state.session_id)
+        else:
+            data = await api.insights(state.token, state.session_id)
     except BackendError as e:
         await msg.reply_text(t("qa_fail", lang, error=e.detail))
         return

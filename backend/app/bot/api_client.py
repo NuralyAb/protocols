@@ -95,6 +95,48 @@ async def insights(token: str, session_id: str) -> dict:
         return await _handle(r)
 
 
+async def list_jobs(token: str, limit: int = 10) -> list[dict]:
+    async with httpx.AsyncClient(timeout=TIMEOUT) as c:
+        r = await c.get(
+            f"{BACKEND_URL}/api/v1/jobs",
+            headers=_headers(token),
+            params={"limit": limit},
+        )
+        return await _handle(r)
+
+
+async def job_by_friendly_id(token: str, fid: str) -> dict:
+    async with httpx.AsyncClient(timeout=TIMEOUT) as c:
+        r = await c.get(
+            f"{BACKEND_URL}/api/v1/jobs/by_friendly_id/{fid}",
+            headers=_headers(token),
+        )
+        return await _handle(r)
+
+
+async def generate_job_protocol(
+    token: str, job_id: str, template_id: str, fmt: str = "pdf"
+) -> bytes:
+    async with httpx.AsyncClient(timeout=TIMEOUT) as c:
+        r = await c.post(
+            f"{BACKEND_URL}/api/v1/jobs/{job_id}/protocol",
+            headers=_headers(token),
+            json={"template_id": template_id, "format": fmt},
+        )
+        if r.status_code >= 400:
+            await _handle(r)
+        return r.content
+
+
+async def job_insights(token: str, job_id: str) -> dict:
+    async with httpx.AsyncClient(timeout=TIMEOUT) as c:
+        r = await c.get(
+            f"{BACKEND_URL}/api/v1/jobs/{job_id}/insights",
+            headers=_headers(token),
+        )
+        return await _handle(r)
+
+
 async def qa(token: str, session_id: str, question: str, lang: str) -> dict:
     async with httpx.AsyncClient(timeout=TIMEOUT) as c:
         r = await c.get(

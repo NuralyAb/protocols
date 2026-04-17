@@ -32,6 +32,7 @@ class TranscriptSegmentOut(BaseModel):
 
 class JobOut(BaseModel):
     id: UUID
+    friendly_id: str | None = None
     title: str | None = None
     status: JobStatus
     progress: int

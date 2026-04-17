@@ -29,6 +29,33 @@ from app.services.summarization.templates import get_template
 
 router = APIRouter()
 
+
+def _gen_friendly_id_base() -> str:
+    """`DDMMYYYY-HHMM` in Asia/Almaty (UTC+5) — matches live_sessions scheme."""
+    from datetime import datetime, timezone
+    try:
+        from zoneinfo import ZoneInfo
+        tz = ZoneInfo("Asia/Almaty")
+    except Exception:  # pragma: no cover
+        tz = timezone.utc
+    n = datetime.now(tz=timezone.utc).astimezone(tz)
+    return f"{n.day:02d}{n.month:02d}{n.year:04d}-{n.hour:02d}{n.minute:02d}"
+
+
+async def _allocate_job_friendly_id(db) -> str:
+    base = _gen_friendly_id_base()
+    candidate = base
+    suffix = 1
+    while True:
+        exists = await db.scalar(select(Job.id).where(Job.friendly_id == candidate))
+        if not exists:
+            return candidate
+        suffix += 1
+        candidate = f"{base}-{suffix}"
+        if suffix > 99:
+            import secrets as _s
+            return f"{base}-{_s.token_hex(2)}"
+
 ALLOWED_AUDIO_TYPES = {
     "audio/wav", "audio/x-wav",
     "audio/mpeg", "audio/mp3",
@@ -105,6 +132,7 @@ async def build_protocol(
     }
     provider = asr_provider if asr_provider in allowed_providers else None
 
+    fid = await _allocate_job_friendly_id(db)
     job = Job(
         owner_id=user.id,
         title=title or file.filename,
@@ -112,6 +140,7 @@ async def build_protocol(
         source_filename=file.filename,
         languages_hint=lang_hint,
         asr_provider=provider,
+        friendly_id=fid,
         status=JobStatus.pending,
     )
     db.add(job)
@@ -135,6 +164,18 @@ async def list_jobs(user: CurrentUser, db: DBSession, limit: int = 50) -> list[J
         .limit(min(max(limit, 1), 200))
     )
     return list(rows.all())
+
+
+@router.get("/jobs/by_friendly_id/{friendly_id}", response_model=JobOut)
+async def job_by_friendly_id(
+    friendly_id: str, user: CurrentUser, db: DBSession
+) -> Job:
+    job = await db.scalar(
+        select(Job).where(Job.friendly_id == friendly_id, Job.owner_id == user.id)
+    )
+    if not job:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Job not found")
+    return job
 
 
 @router.get("/jobs/{job_id}", response_model=JobStatusOut)
