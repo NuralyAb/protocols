@@ -41,6 +41,13 @@ def _client(space: str):
     return Client(space, token=token)
 
 
+def _wrap_file(path: str):
+    """Gradio 4+ expects files wrapped via `handle_file()`, not raw paths."""
+    from gradio_client import handle_file
+
+    return handle_file(path)
+
+
 def transcribe_file_space(
     wav_path: str | Path,
     language: str = "kk",
@@ -51,7 +58,7 @@ def transcribe_file_space(
     path = str(wav_path)
     log.info("hf_space.call", space=repo, lang=language, bytes=Path(path).stat().st_size)
     client = _client(repo)
-    raw = client.predict(audio_path=path, language=language or "kk", api_name="/predict")
+    raw = client.predict(audio_path=_wrap_file(path), language=language or "kk", api_name="/predict")
 
     if isinstance(raw, (bytes, bytearray)):
         raw = raw.decode("utf-8", errors="replace")
