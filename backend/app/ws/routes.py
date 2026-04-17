@@ -144,6 +144,7 @@ async def session_ws(
     # HF Inference API for Uali/* is 404 — route both KK-on-HF options to the Space.
     use_space = provider in ("hf_space", "hf_kazakh")
     use_hf = False
+    use_openai_transcribe = provider == "openai_transcribe" and bool(settings.openai_api_key)
 
     await hub.attach(session_id, websocket)
     await websocket.send_json({
@@ -159,6 +160,7 @@ async def session_ws(
         await _run_local(
             websocket, session, user_id, language,
             prefer_kazakh=prefer_kazakh, use_hf=use_hf, use_space=use_space,
+            use_openai_transcribe=use_openai_transcribe,
         )
 
     await hub.detach(session_id, websocket)
@@ -208,6 +210,7 @@ async def _run_local(
     prefer_kazakh: bool = False,
     use_hf: bool = False,
     use_space: bool = False,
+    use_openai_transcribe: bool = False,
 ) -> None:
     stream = SessionStream(
         session_id=str(session.id),
@@ -216,6 +219,7 @@ async def _run_local(
         prefer_kazakh=prefer_kazakh,
         use_hf=use_hf,
         use_space=use_space,
+        use_openai_transcribe=use_openai_transcribe,
     )
     recording = bytearray()
     try:

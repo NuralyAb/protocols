@@ -124,7 +124,13 @@ export type JobAudio = {
   duration_ms?: number | null;
 };
 
-export type AsrProvider = 'openai' | 'local' | 'local_kazakh' | 'hf_kazakh' | 'hf_space';
+export type AsrProvider =
+  | 'openai'
+  | 'openai_transcribe'
+  | 'local'
+  | 'local_kazakh'
+  | 'hf_kazakh'
+  | 'hf_space';
 
 export type LiveSession = {
   id: string;

@@ -116,6 +116,7 @@ def transcribe_utterance(
     prefer_kazakh: bool = False,
     use_hf: bool = False,
     use_space: bool = False,
+    use_openai_transcribe: bool = False,
 ) -> dict[str, Any]:
     """Decode one utterance → Whisper → persist TranscriptSegment → publish WS event."""
     import base64
@@ -135,7 +136,23 @@ def transcribe_utterance(
         tmp_path = tmp.name
 
     try:
-        if use_space:
+        if use_openai_transcribe:
+            from app.services.asr.openai_asr import transcribe_file_openai
+            from app.services.asr.whisper_service import WhisperSegment
+
+            raw = transcribe_file_openai(tmp_path, language=language)
+            segs = [
+                WhisperSegment(
+                    start_ms=s.start_ms,
+                    end_ms=s.end_ms,
+                    text=s.text,
+                    language=s.language,
+                    avg_logprob=s.avg_logprob,
+                    no_speech_prob=s.no_speech_prob,
+                )
+                for s in raw
+            ]
+        elif use_space:
             from app.services.asr.hf_space import transcribe_file_space
             from app.services.asr.whisper_service import WhisperSegment
 

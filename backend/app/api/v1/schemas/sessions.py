@@ -8,7 +8,9 @@ from pydantic import BaseModel, Field
 class LiveSessionCreate(BaseModel):
     title: str | None = None
     languages: list[str] = Field(default_factory=lambda: ["kk", "ru", "en"])
-    asr_provider: Literal["openai", "local", "local_kazakh", "hf_kazakh", "hf_space"] = "local"
+    asr_provider: Literal[
+        "openai", "openai_transcribe", "local", "local_kazakh", "hf_kazakh", "hf_space"
+    ] = "local"
 
 
 class LiveSessionOut(BaseModel):

@@ -47,7 +47,8 @@ function mmss(ms: number) {
 }
 
 const PROVIDER_LABELS: Record<AsrProvider, string> = {
-  openai: 'OpenAI',
+  openai: 'OpenAI Realtime',
+  openai_transcribe: 'gpt-4o-transcribe',
   hf_space: 'HF Space',
   hf_kazakh: 'HF Kazakh',
   local_kazakh: 'Local Kazakh',
@@ -429,6 +430,8 @@ export default function LivePage() {
               hint={
                 provider === 'openai'
                   ? t('providerOpenaiHint')
+                  : provider === 'openai_transcribe'
+                  ? t('providerOpenaiTranscribeHint')
                   : provider === 'hf_space'
                   ? t('providerHfSpaceHint')
                   : provider === 'hf_kazakh'
@@ -444,6 +447,7 @@ export default function LivePage() {
                 onChange={(e) => setProvider(e.target.value as AsrProvider)}
               >
                 <option value="openai">{t('providerOpenai')}</option>
+                <option value="openai_transcribe">{t('providerOpenaiTranscribe')}</option>
                 <option value="hf_space">{t('providerHfSpace')}</option>
                 <option value="hf_kazakh">{t('providerHfKazakh')}</option>
                 <option value="local_kazakh">{t('providerLocalKazakh')}</option>
