@@ -48,7 +48,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["X-Trace-Id"],
+    expose_headers=["X-Trace-Id", "X-Template-Id", "Content-Disposition"],
 )
 app.add_middleware(TraceIdMiddleware)
 register_error_handlers(app)

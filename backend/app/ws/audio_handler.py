@@ -29,12 +29,15 @@ log = get_logger("ws.audio")
 SAMPLE_RATE = 16_000
 FRAME_MS = 40
 FRAME_SAMPLES = SAMPLE_RATE * FRAME_MS // 1000  # 640
-# Tuned for Whisper quality: short utterances make it hallucinate / loop.
-# We pay ~1.5s extra latency to keep chunks long enough for clean decoding.
-SILENCE_MS = 1500
-MIN_UTTERANCE_MS = 3000
+# Whisper quality vs. latency trade-off: longer chunks = cleaner output,
+# shorter = faster feedback. ~1s silence + ~1s min works well for conversational speech.
+SILENCE_MS = 1000
+MIN_UTTERANCE_MS = 1000
 MAX_UTTERANCE_MS = 20_000
-RMS_THRESHOLD = 350.0  # int16 RMS below this = silence
+# int16 RMS below this = silence. Some mics (especially browser getUserMedia
+# with echo cancellation) produce very quiet PCM; 100 is conservative enough
+# to catch normal speech without triggering on background hum.
+RMS_THRESHOLD = 100.0
 
 
 def _rms(frame: np.ndarray) -> float:
@@ -134,7 +137,11 @@ class SessionStream:
 
     async def close(self) -> None:
         async with self._lock:
-            if self._voiced and self._buffered_ms() >= MIN_UTTERANCE_MS:
+            # Flush whatever's left — even if VAD never triggered. Browsers
+            # with aggressive noise suppression can produce PCM so quiet that
+            # RMS never crosses the threshold, and we'd drop the whole session.
+            if self._buffered_ms() >= MIN_UTTERANCE_MS:
+                self._voiced = True  # force flush regardless of VAD state
                 await self._flush_utterance()
 
     async def _flush_utterance(self) -> None:
