@@ -17,6 +17,9 @@ import { useToasts } from '@/components/ui/Toast';
 import { TranscriptView } from '@/components/TranscriptView';
 import { SpeakerEditor } from '@/components/SpeakerEditor';
 import { ExportMenu } from '@/components/ExportMenu';
+import { AudioPlayer } from '@/components/AudioPlayer';
+import { GenerateReport } from '@/components/GenerateReport';
+import { InsightsPanel } from '@/components/InsightsPanel';
 
 export default function SessionPage() {
   const { id } = useParams<{ id: string }>();
@@ -107,6 +110,15 @@ export default function SessionPage() {
         )}
       </header>
 
+      <div className="grid gap-4 lg:grid-cols-2">
+        <AudioPlayer jobId={job.id} />
+        <GenerateReport
+          jobId={job.id}
+          title={job.title || job.source_filename || undefined}
+          hasTranscript={Boolean(job.result?.transcript?.length)}
+        />
+      </div>
+
       {proto?.title || proto?.agenda?.length ? (
         <Card>
           <CardHeader>
@@ -178,6 +190,10 @@ export default function SessionPage() {
             </ul>
           </CardBody>
         </Card>
+      ) : null}
+
+      {job.status === 'completed' && job.result?.transcript?.length ? (
+        <InsightsPanel source={{ kind: 'job', id: job.id }} />
       ) : null}
 
       {proto?.participants?.length ? (

@@ -80,29 +80,79 @@ def _parse_frontmatter(raw: str) -> tuple[dict, str]:
 
 def _load() -> dict[str, Template]:
     base = _resolve_dir()
-    manifest_path = base / "manifest.json"
-    if not manifest_path.exists():
-        log.warning("templates.manifest_missing", path=str(manifest_path))
-        return {}
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     out: dict[str, Template] = {}
-    for entry in manifest.get("templates", []):
-        fp = base / entry["file"]
-        if not fp.exists():
-            log.warning("templates.file_missing", id=entry.get("id"), file=entry.get("file"))
-            continue
-        raw = fp.read_text(encoding="utf-8")
-        front, body = _parse_frontmatter(raw)
-        meta = TemplateMeta(
-            id=entry["id"],
-            name=entry.get("name") or front.get("name") or entry["id"],
-            description=entry.get("description") or front.get("description") or "",
-            language=entry.get("language") or front.get("language") or "ru",
-        )
-        sections = tuple(front.get("sections") or [])
-        out[entry["id"]] = Template(meta=meta, body=body.strip(), sections=sections)
+    manifest_path = base / "manifest.json"
+    if manifest_path.exists():
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        for entry in manifest.get("templates", []):
+            fp = base / entry["file"]
+            if not fp.exists():
+                log.warning("templates.file_missing", id=entry.get("id"), file=entry.get("file"))
+                continue
+            raw = fp.read_text(encoding="utf-8")
+            front, body = _parse_frontmatter(raw)
+            meta = TemplateMeta(
+                id=entry["id"],
+                name=entry.get("name") or front.get("name") or entry["id"],
+                description=entry.get("description") or front.get("description") or "",
+                language=entry.get("language") or front.get("language") or "ru",
+            )
+            sections = tuple(front.get("sections") or [])
+            out[entry["id"]] = Template(meta=meta, body=body.strip(), sections=sections)
+    else:
+        log.warning("templates.manifest_missing", path=str(manifest_path))
+
+    custom_dir = base / "custom"
+    if custom_dir.exists():
+        for fp in sorted(custom_dir.glob("*.md")):
+            raw = fp.read_text(encoding="utf-8")
+            front, body = _parse_frontmatter(raw)
+            tpl_id = str(front.get("id") or fp.stem)
+            meta = TemplateMeta(
+                id=tpl_id,
+                name=str(front.get("name") or tpl_id),
+                description=str(front.get("description") or ""),
+                language=str(front.get("language") or "ru"),
+            )
+            sections = tuple(front.get("sections") or [])
+            out[tpl_id] = Template(meta=meta, body=body.strip(), sections=sections)
+
     log.info("templates.loaded", count=len(out), dir=str(base))
     return out
+
+
+_SLUG_RE = re.compile(r"[^a-z0-9]+")
+
+
+def _slugify(value: str) -> str:
+    s = _SLUG_RE.sub("-", value.lower()).strip("-")
+    return s or "tpl"
+
+
+def save_custom_template(
+    *, name: str, description: str, language: str, body: str
+) -> TemplateMeta:
+    base = _resolve_dir()
+    custom_dir = base / "custom"
+    custom_dir.mkdir(parents=True, exist_ok=True)
+
+    import time
+    tpl_id = f"custom-{_slugify(name)}-{int(time.time())}"
+    safe_name = name.replace("\n", " ").strip()[:120] or tpl_id
+    safe_desc = description.replace("\n", " ").strip()[:500]
+    safe_lang = (language or "ru").strip()[:8] or "ru"
+
+    frontmatter = (
+        "---\n"
+        f"id: {tpl_id}\n"
+        f"name: {safe_name}\n"
+        f"description: {safe_desc}\n"
+        f"language: {safe_lang}\n"
+        "---\n"
+    )
+    (custom_dir / f"{tpl_id}.md").write_text(frontmatter + body.strip() + "\n", encoding="utf-8")
+    reload_templates()
+    return TemplateMeta(id=tpl_id, name=safe_name, description=safe_desc, language=safe_lang)
 
 
 def _ensure() -> dict[str, Template]:
@@ -135,4 +185,5 @@ __all__ = [
     "list_templates",
     "get_template",
     "reload_templates",
+    "save_custom_template",
 ]

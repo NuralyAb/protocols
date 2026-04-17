@@ -1,7 +1,8 @@
+import secrets
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Response, status
+from fastapi import APIRouter, File, Form, HTTPException, Query, Response, UploadFile, status
 from sqlalchemy import select
 
 from app.api.v1.deps import CurrentUser, DBSession
@@ -9,15 +10,22 @@ from app.api.v1.schemas import (
     LiveSessionCreate,
     LiveSessionOut,
     ProtocolGenerateRequest,
+    PublicSessionOut,
     TemplateOut,
+    ViewerTokenOut,
 )
 from app.core.config import get_settings
 from app.db.models import Export, ExportFormat, LiveSession, Speaker, TranscriptSegment
 from app.services.export import render as render_export
 from app.services.export.markdown_convert import markdown_to_docx, markdown_to_pdf
-from app.services.storage.s3_service import export_key, upload_fileobj
+from app.services.storage.s3_service import export_key, presign_get_url, upload_fileobj
+from app.services.summarization.insights import build_insights
 from app.services.summarization.protocol_generator import generate_from_template
-from app.services.summarization.templates import get_template, list_templates
+from app.services.summarization.templates import (
+    get_template,
+    list_templates,
+    save_custom_template,
+)
 
 router = APIRouter()
 
@@ -29,6 +37,53 @@ async def list_protocol_templates(user: CurrentUser) -> list[TemplateOut]:
         TemplateOut(id=m.id, name=m.name, description=m.description, language=m.language)
         for m in list_templates()
     ]
+
+
+_MAX_TEMPLATE_BYTES = 64 * 1024
+
+
+@router.post("/templates", response_model=TemplateOut, status_code=status.HTTP_201_CREATED)
+async def upload_protocol_template(
+    user: CurrentUser,
+    name: str = Form(..., min_length=1, max_length=120),
+    description: str = Form("", max_length=500),
+    language: str = Form("ru", max_length=8),
+    file: UploadFile | None = File(None),
+    body: str | None = Form(None),
+) -> TemplateOut:
+    _ = user
+    raw: str
+    if file is not None:
+        blob = await file.read()
+        if len(blob) > _MAX_TEMPLATE_BYTES:
+            raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Template too large")
+        try:
+            raw = blob.decode("utf-8")
+        except UnicodeDecodeError as e:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Template must be UTF-8 text") from e
+    elif body is not None:
+        raw = body
+    else:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Provide `file` or `body`")
+
+    raw = raw.strip()
+    if not raw:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Template body is empty")
+
+    meta = save_custom_template(name=name, description=description, language=language, body=raw)
+    return TemplateOut(id=meta.id, name=meta.name, description=meta.description, language=meta.language)
+
+
+@router.get("", response_model=list[LiveSessionOut])
+async def list_sessions(user: CurrentUser, db: DBSession, limit: int = 50) -> list[LiveSession]:
+    limit = max(1, min(limit, 200))
+    rows = await db.scalars(
+        select(LiveSession)
+        .where(LiveSession.owner_id == user.id)
+        .order_by(LiveSession.started_at.desc())
+        .limit(limit)
+    )
+    return list(rows.all())
 
 
 @router.post("", response_model=LiveSessionOut, status_code=status.HTTP_201_CREATED)
@@ -122,6 +177,38 @@ async def _build_result(session_id: UUID, db) -> dict:
 async def session_snapshot(session_id: UUID, user: CurrentUser, db: DBSession) -> dict:
     await _load_session(session_id, user, db)
     return await _build_result(session_id, db)
+
+
+@router.get("/{session_id}/audio")
+async def session_audio(session_id: UUID, user: CurrentUser, db: DBSession) -> dict:
+    """Return presigned URLs for inline playback and download of the session recording."""
+    session = await _load_session(session_id, user, db)
+    if not session.audio_key:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Recording not available")
+    settings = get_settings()
+    filename = f"session_{session.id}.wav"
+    stream_url = presign_get_url(
+        settings.s3_bucket_media,
+        session.audio_key,
+        expires_in=3600,
+        filename=filename,
+        content_type="audio/wav",
+        disposition="inline",
+    )
+    download_url = presign_get_url(
+        settings.s3_bucket_media,
+        session.audio_key,
+        expires_in=3600,
+        filename=filename,
+        content_type="audio/wav",
+        disposition="attachment",
+    )
+    return {
+        "url": stream_url,
+        "download_url": download_url,
+        "filename": filename,
+        "content_type": "audio/wav",
+    }
 
 
 @router.get("/{session_id}/export")
@@ -226,6 +313,96 @@ async def generate_session_protocol(
         )
 
     raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Unsupported format: {body.format}")
+
+
+@router.post(
+    "/{session_id}/viewer_token",
+    response_model=ViewerTokenOut,
+    status_code=status.HTTP_201_CREATED,
+)
+async def mint_viewer_token(
+    session_id: UUID,
+    user: CurrentUser,
+    db: DBSession,
+    rotate: bool = False,
+) -> ViewerTokenOut:
+    """Mint (or rotate) a read-only viewer token for the session.
+
+    Anyone with the token can read the live transcript via the public WS and
+    the public REST endpoints below. The token is opaque and bound to one session.
+    """
+    session = await _load_session(session_id, user, db)
+    if rotate or not session.viewer_token:
+        session.viewer_token = secrets.token_urlsafe(24)
+        await db.commit()
+        await db.refresh(session)
+    return ViewerTokenOut(
+        session_id=session.id,
+        viewer_token=session.viewer_token or "",
+        public_url_path=f"/public/session/{session.id}?token={session.viewer_token}",
+    )
+
+
+async def _load_public_session(session_id: UUID, token: str, db) -> LiveSession:
+    if not token:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Missing viewer token")
+    s = await db.scalar(
+        select(LiveSession).where(
+            LiveSession.id == session_id,
+            LiveSession.viewer_token == token,
+        )
+    )
+    if not s:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
+    return s
+
+
+@router.get("/{session_id}/public", response_model=PublicSessionOut)
+async def public_session_meta(
+    session_id: UUID,
+    db: DBSession,
+    token: str = Query(..., description="Viewer token"),
+) -> PublicSessionOut:
+    s = await _load_public_session(session_id, token, db)
+    return PublicSessionOut(
+        id=s.id,
+        title=s.title,
+        is_active=s.is_active,
+        languages=s.languages,
+        started_at=s.started_at,
+        ended_at=s.ended_at,
+    )
+
+
+@router.get("/{session_id}/public/transcript")
+async def public_session_transcript(
+    session_id: UUID,
+    db: DBSession,
+    token: str = Query(...),
+) -> dict:
+    """Snapshot of the public-readable transcript. Polling fallback if WS isn't usable."""
+    await _load_public_session(session_id, token, db)
+    return await _build_result(session_id, db)
+
+
+@router.get("/{session_id}/insights")
+async def session_insights(
+    session_id: UUID,
+    user: CurrentUser,
+    db: DBSession,
+    key_moments: bool = True,
+) -> dict:
+    """Speaker time, top words, and (optional) LLM-extracted key moments."""
+    import asyncio
+
+    await _load_session(session_id, user, db)
+    result = await _build_result(session_id, db)
+    transcript = result.get("transcript") or []
+    participants = result.get("protocol", {}).get("participants") or []
+    languages = result.get("metadata", {}).get("languages_detected") or None
+    return await asyncio.to_thread(
+        build_insights, transcript, participants, languages, include_key_moments=key_moments
+    )
 
 
 @router.patch("/{session_id}/speakers", status_code=status.HTTP_204_NO_CONTENT)

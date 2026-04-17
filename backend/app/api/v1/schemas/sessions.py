@@ -17,10 +17,27 @@ class LiveSessionOut(BaseModel):
     is_active: bool
     languages: list[str] | None = None
     asr_provider: str = "local"
+    audio_key: str | None = None
+    viewer_token: str | None = None
     started_at: datetime
     ended_at: datetime | None = None
 
     model_config = {"from_attributes": True}
+
+
+class ViewerTokenOut(BaseModel):
+    session_id: UUID
+    viewer_token: str
+    public_url_path: str  # frontend should prepend its origin
+
+
+class PublicSessionOut(BaseModel):
+    id: UUID
+    title: str | None = None
+    is_active: bool
+    languages: list[str] | None = None
+    started_at: datetime
+    ended_at: datetime | None = None
 
 
 class TemplateOut(BaseModel):

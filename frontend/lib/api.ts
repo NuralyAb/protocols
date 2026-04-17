@@ -103,6 +103,25 @@ export const jobsApi = {
   ) => api.patch(`/api/v1/jobs/${id}/speakers`, patches),
   exportUrl: (id: string, format: 'pdf' | 'docx' | 'json' | 'txt' | 'srt' | 'vtt') =>
     `${api.defaults.baseURL}/api/v1/jobs/${id}/export?format=${format}`,
+  audio: (id: string) => api.get<JobAudio>(`/api/v1/jobs/${id}/audio`),
+  generateProtocol: (id: string, template_id: string, format: ProtocolFormat) =>
+    api.post<Blob>(
+      `/api/v1/jobs/${id}/protocol`,
+      { template_id, format },
+      { responseType: 'blob' }
+    ),
+  insights: (id: string, opts?: { keyMoments?: boolean }) =>
+    api.get<Insights>(`/api/v1/jobs/${id}/insights`, {
+      params: { key_moments: opts?.keyMoments ?? true },
+    }),
+};
+
+export type JobAudio = {
+  url: string;
+  download_url: string;
+  filename: string;
+  content_type: string;
+  duration_ms?: number | null;
 };
 
 export type AsrProvider = 'openai' | 'local' | 'local_kazakh' | 'hf_kazakh';
@@ -113,6 +132,7 @@ export type LiveSession = {
   is_active: boolean;
   languages?: string[] | null;
   asr_provider?: AsrProvider;
+  audio_key?: string | null;
   started_at: string;
   ended_at?: string | null;
 };
@@ -126,10 +146,77 @@ export type ProtocolTemplate = {
 
 export type ProtocolFormat = 'markdown' | 'docx' | 'pdf';
 
+export type TranslateLang = 'kk' | 'ru' | 'en';
+
+export type ViewerToken = {
+  session_id: string;
+  viewer_token: string;
+  public_url_path: string;
+};
+
+export type PublicSession = {
+  id: string;
+  title?: string | null;
+  is_active: boolean;
+  languages?: string[] | null;
+  started_at: string;
+  ended_at?: string | null;
+};
+
+export type SpeakerStat = {
+  id: string;
+  label: string;
+  speaking_ms: number;
+  segments: number;
+  words: number;
+  share: number;
+};
+
+export type WordStat = { word: string; count: number };
+
+export type KeyMomentKind =
+  | 'decision'
+  | 'disagreement'
+  | 'vote'
+  | 'proposal'
+  | 'highlight';
+
+export type KeyMoment = {
+  at_ms: number;
+  speaker: string;
+  kind: KeyMomentKind;
+  summary: string;
+};
+
+export type Insights = {
+  speakers: SpeakerStat[];
+  top_words: WordStat[];
+  key_moments: KeyMoment[];
+  totals: {
+    speaking_ms: number;
+    segments: number;
+    speakers: number;
+    words: number;
+  };
+};
+
+export const translateApi = {
+  translate: (payload: { text: string; source?: string | null; target: TranslateLang }) =>
+    api.post<{ text: string; source: string | null; target: string }>(
+      '/api/v1/translate',
+      payload,
+    ),
+};
+
 export const sessionsApi = {
+  list: () => api.get<LiveSession[]>('/api/v1/sessions'),
   create: (payload: { title?: string; languages?: string[]; asr_provider?: AsrProvider }) =>
     api.post<LiveSession>('/api/v1/sessions', payload),
   get: (id: string) => api.get<LiveSession>(`/api/v1/sessions/${id}`),
+  audio: (id: string) =>
+    api.get<{ url: string; download_url: string; filename: string; content_type: string }>(
+      `/api/v1/sessions/${id}/audio`
+    ),
   snapshot: (id: string) => api.get<JobResult>(`/api/v1/sessions/${id}/snapshot`),
   exportUrl: (id: string, format: 'pdf' | 'docx' | 'json' | 'txt' | 'srt' | 'vtt') =>
     `${api.defaults.baseURL}/api/v1/sessions/${id}/export?format=${format}`,
@@ -138,10 +225,39 @@ export const sessionsApi = {
     patches: Array<{ diarization_id: string; label?: string; role?: string }>
   ) => api.patch(`/api/v1/sessions/${id}/speakers`, patches),
   listTemplates: () => api.get<ProtocolTemplate[]>('/api/v1/sessions/templates'),
+  uploadTemplate: (payload: {
+    name: string;
+    description?: string;
+    language?: string;
+    file?: File;
+    body?: string;
+  }) => {
+    const fd = new FormData();
+    fd.append('name', payload.name);
+    if (payload.description) fd.append('description', payload.description);
+    if (payload.language) fd.append('language', payload.language);
+    if (payload.file) fd.append('file', payload.file);
+    if (payload.body) fd.append('body', payload.body);
+    return api.post<ProtocolTemplate>('/api/v1/sessions/templates', fd);
+  },
   generateProtocol: (id: string, template_id: string, format: ProtocolFormat) =>
     api.post<Blob>(
       `/api/v1/sessions/${id}/protocol`,
       { template_id, format },
       { responseType: 'blob' }
     ),
+  insights: (id: string, opts?: { keyMoments?: boolean }) =>
+    api.get<Insights>(`/api/v1/sessions/${id}/insights`, {
+      params: { key_moments: opts?.keyMoments ?? true },
+    }),
+  mintViewerToken: (id: string, opts?: { rotate?: boolean }) =>
+    api.post<ViewerToken>(
+      `/api/v1/sessions/${id}/viewer_token`,
+      undefined,
+      { params: { rotate: opts?.rotate ?? false } },
+    ),
+  publicMeta: (id: string, token: string) =>
+    api.get<PublicSession>(`/api/v1/sessions/${id}/public`, { params: { token } }),
+  publicTranscript: (id: string, token: string) =>
+    api.get<JobResult>(`/api/v1/sessions/${id}/public/transcript`, { params: { token } }),
 };

@@ -38,16 +38,16 @@ export default async function SettingsPage() {
         </div>
       </header>
 
-      <ul className="space-y-3">
+      <ul className="grid gap-3 sm:grid-cols-2">
         {groups.map(({ icon: Icon, title, description }) => (
           <li key={title}>
             <Card>
-              <CardBody className="flex items-center gap-4">
-                <div className="flex size-9 items-center justify-center rounded-lg bg-primary-soft text-primary">
+              <CardBody className="flex items-start gap-4">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary">
                   <Icon className="size-4" aria-hidden />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <h2 className="text-sm font-semibold">{title}</h2>
                     <Badge tone="neutral">Soon</Badge>
                   </div>

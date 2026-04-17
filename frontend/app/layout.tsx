@@ -5,6 +5,7 @@ import { getLocale, getMessages, getTranslations } from 'next-intl/server';
 import { Navbar } from '@/components/Navbar';
 import { AccessibilityBar } from '@/components/AccessibilityBar';
 import { AuthGate } from '@/components/AuthGate';
+import { PageTransition } from '@/components/PageTransition';
 import { Toaster } from '@/components/ui/Toast';
 import './globals.css';
 
@@ -31,6 +32,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const tNav = await getTranslations('nav');
   return (
     <html lang={locale} suppressHydrationWarning className={`${inter.variable} ${jetbrains.variable}`}>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var p=JSON.parse(localStorage.getItem('protocol-ai:prefs')||'{}');var d=typeof p.dark==='boolean'?p.dark:window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');if(p.contrast)document.documentElement.classList.add('contrast-high');if(p.largeCaptions)document.documentElement.classList.add('captions-large');}catch(e){}})();`,
+          }}
+        />
+      </head>
       <body className="min-h-screen antialiased">
         <NextIntlClientProvider locale={locale} messages={messages}>
           <a href="#main" className="skip-link">{tNav('skipToContent')}</a>
@@ -42,12 +50,18 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               tabIndex={-1}
               className="container py-8 focus-visible:outline-none sm:py-10"
             >
-              <AuthGate>{children}</AuthGate>
+              <AuthGate>
+                <PageTransition>{children}</PageTransition>
+              </AuthGate>
             </main>
             <footer className="border-t border-border bg-surface-1/60">
               <div className="container flex flex-wrap items-center justify-between gap-2 py-4 text-xs text-muted-fg">
                 <span>© {new Date().getFullYear()} Protocol AI</span>
-                <span>v0.1 · build preview</span>
+                <span className="inline-flex items-center gap-2">
+                  <span>{tNav('madeWith')}</span>
+                  <span aria-hidden>·</span>
+                  <span>KK · RU · EN</span>
+                </span>
               </div>
             </footer>
           </div>

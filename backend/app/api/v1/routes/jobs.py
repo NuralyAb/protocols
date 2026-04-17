@@ -5,12 +5,27 @@ from fastapi import APIRouter, File, Form, HTTPException, Request, Response, Upl
 from sqlalchemy import select
 
 from app.api.v1.deps import CurrentUser, DBSession
-from app.api.v1.schemas import JobCreateResponse, JobOut, JobStatusOut, SpeakerPatch
+from app.api.v1.schemas import (
+    JobCreateResponse,
+    JobOut,
+    JobStatusOut,
+    ProtocolGenerateRequest,
+    SpeakerPatch,
+)
 from app.core.config import get_settings
 from app.core.limiter import limiter
 from app.db.models import Export, ExportFormat, Job, JobStatus, Speaker
 from app.services.export import render as render_export
-from app.services.storage.s3_service import export_key, media_key, upload_fileobj
+from app.services.export.markdown_convert import markdown_to_docx, markdown_to_pdf
+from app.services.storage.s3_service import (
+    export_key,
+    media_key,
+    presign_get_url,
+    upload_fileobj,
+)
+from app.services.summarization.insights import build_insights
+from app.services.summarization.protocol_generator import generate_from_template
+from app.services.summarization.templates import get_template
 
 router = APIRouter()
 
@@ -152,6 +167,147 @@ async def patch_speakers(
         if p.role is not None:
             sp.role = p.role
     await db.commit()
+
+
+_MIME_BY_EXT = {
+    "wav": "audio/wav",
+    "mp3": "audio/mpeg",
+    "m4a": "audio/mp4",
+    "mp4": "audio/mp4",
+    "ogg": "audio/ogg",
+    "flac": "audio/flac",
+    "webm": "audio/webm",
+}
+
+
+def _guess_audio_mime(filename: str | None, key: str | None) -> str:
+    for candidate in (filename, key):
+        if not candidate:
+            continue
+        dot = candidate.rfind(".")
+        if dot != -1:
+            ext = candidate[dot + 1 :].lower()
+            if ext in _MIME_BY_EXT:
+                return _MIME_BY_EXT[ext]
+    return "application/octet-stream"
+
+
+@router.get("/jobs/{job_id}/audio")
+async def job_audio(job_id: UUID, user: CurrentUser, db: DBSession) -> dict:
+    """Return presigned URLs for inline playback and download of the source audio."""
+    job = await db.scalar(select(Job).where(Job.id == job_id, Job.owner_id == user.id))
+    if not job:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Job not found")
+    if not job.source_key:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Source audio not stored")
+
+    settings = get_settings()
+    mime = _guess_audio_mime(job.source_filename, job.source_key)
+    filename = job.source_filename or f"recording_{job.id}.bin"
+
+    stream_url = presign_get_url(
+        settings.s3_bucket_media,
+        job.source_key,
+        expires_in=3600,
+        filename=filename,
+        content_type=mime,
+        disposition="inline",
+    )
+    download_url = presign_get_url(
+        settings.s3_bucket_media,
+        job.source_key,
+        expires_in=3600,
+        filename=filename,
+        content_type=mime,
+        disposition="attachment",
+    )
+    return {
+        "url": stream_url,
+        "download_url": download_url,
+        "filename": filename,
+        "content_type": mime,
+        "duration_ms": job.duration_ms,
+    }
+
+
+@router.post("/jobs/{job_id}/protocol")
+async def generate_job_protocol(
+    job_id: UUID,
+    body: ProtocolGenerateRequest,
+    user: CurrentUser,
+    db: DBSession,
+) -> Response:
+    """Regenerate a protocol document from the job transcript using a chosen template."""
+    import asyncio
+
+    job = await db.scalar(select(Job).where(Job.id == job_id, Job.owner_id == user.id))
+    if not job:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Job not found")
+
+    template = get_template(body.template_id)
+    if not template:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Template '{body.template_id}' not found")
+
+    transcript = (job.result or {}).get("transcript") or []
+    if not transcript:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Transcript is empty")
+    languages = (job.result or {}).get("metadata", {}).get("languages_detected") or None
+
+    try:
+        markdown = await asyncio.to_thread(
+            generate_from_template, transcript, template, languages
+        )
+    except RuntimeError as e:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(e)) from e
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"LLM error: {e}") from e
+
+    safe_title = (job.title or f"protocol_{job.id}").replace('"', "").strip()
+    headers = {
+        "Content-Disposition": f'attachment; filename="{safe_title}.{body.format}"',
+        "Cache-Control": "no-store",
+        "X-Template-Id": template.meta.id,
+    }
+
+    if body.format == "markdown":
+        return Response(
+            content=markdown.encode("utf-8"),
+            media_type="text/markdown; charset=utf-8",
+            headers={**headers, "Content-Disposition": headers["Content-Disposition"].replace(".markdown", ".md")},
+        )
+    if body.format == "docx":
+        data = await asyncio.to_thread(markdown_to_docx, markdown, safe_title)
+        return Response(
+            content=data,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers=headers,
+        )
+    if body.format == "pdf":
+        data = await asyncio.to_thread(markdown_to_pdf, markdown, safe_title)
+        return Response(content=data, media_type="application/pdf", headers=headers)
+
+    raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Unsupported format: {body.format}")
+
+
+@router.get("/jobs/{job_id}/insights")
+async def job_insights(
+    job_id: UUID,
+    user: CurrentUser,
+    db: DBSession,
+    key_moments: bool = True,
+) -> dict:
+    import asyncio
+
+    job = await db.scalar(select(Job).where(Job.id == job_id, Job.owner_id == user.id))
+    if not job:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Job not found")
+    result = job.result or {}
+    transcript = result.get("transcript") or []
+    participants = result.get("protocol", {}).get("participants") or []
+    languages = result.get("metadata", {}).get("languages_detected") or None
+    return await asyncio.to_thread(
+        build_insights, transcript, participants, languages, include_key_moments=key_moments
+    )
 
 
 @router.get("/jobs/{job_id}/export")

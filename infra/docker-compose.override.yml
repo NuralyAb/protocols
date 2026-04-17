@@ -1,0 +1,5 @@
+services:
+  redis:
+    ports: !reset []
+  postgres:
+    ports: !reset []

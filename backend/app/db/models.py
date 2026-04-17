@@ -161,6 +161,8 @@ class LiveSession(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     languages: Mapped[list[str] | None] = mapped_column(JSON)
     asr_provider: Mapped[str] = mapped_column(String(16), default="local")
+    audio_key: Mapped[str | None] = mapped_column(String(500))
+    viewer_token: Mapped[str | None] = mapped_column(String(64), index=True)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

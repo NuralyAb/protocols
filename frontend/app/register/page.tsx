@@ -1,34 +1,42 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { AudioLines, LogIn } from 'lucide-react';
+import { AudioLines, UserPlus } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/Button';
 import { Input, Field } from '@/components/ui/Input';
 import { useToasts } from '@/components/ui/Toast';
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const t = useTranslations('auth');
   const tApp = useTranslations('app');
   const router = useRouter();
-  const params = useSearchParams();
-  const login = useAuth((s) => s.login);
+  const register = useAuth((s) => s.register);
   const push = useToasts((s) => s.push);
-  const [email, setEmail] = useState('demo@protocol.ai');
-  const [password, setPassword] = useState('demo12345');
+  const [email, setEmail] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (password.length < 8) {
+      push('error', t('passwordTooShort'));
+      return;
+    }
+    if (password !== confirm) {
+      push('error', t('passwordMismatch'));
+      return;
+    }
     setLoading(true);
     try {
-      await login(email, password);
-      const next = params.get('next') || '/';
-      router.replace(next);
+      await register(email, password, fullName.trim() || undefined);
+      router.replace('/');
     } catch (err: any) {
-      push('error', err?.response?.data?.detail || t('error'));
+      push('error', err?.response?.data?.detail || t('registerError'));
     } finally {
       setLoading(false);
     }
@@ -44,13 +52,22 @@ export default function LoginPage() {
           <AudioLines className="size-5" />
         </span>
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
-          <p className="mt-1 text-sm text-muted-fg">{t('subtitle')}</p>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('registerTitle')}</h1>
+          <p className="mt-1 text-sm text-muted-fg">{t('registerSubtitle')}</p>
         </div>
       </div>
 
       <div className="rounded-2xl border border-border bg-surface-1 p-6 shadow-sm">
         <form onSubmit={onSubmit} className="space-y-4">
+          <Field label={t('fullName')} htmlFor="fullName">
+            <Input
+              id="fullName"
+              type="text"
+              autoComplete="name"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+            />
+          </Field>
           <Field label={t('email')} htmlFor="email">
             <Input
               id="email"
@@ -66,25 +83,36 @@ export default function LoginPage() {
               id="password"
               type="password"
               required
-              autoComplete="current-password"
+              minLength={8}
+              autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
           </Field>
+          <Field label={t('confirmPassword')} htmlFor="confirm">
+            <Input
+              id="confirm"
+              type="password"
+              required
+              minLength={8}
+              autoComplete="new-password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+            />
+          </Field>
           <Button type="submit" loading={loading} className="w-full" size="lg">
-            {!loading && <LogIn />}
-            {t('signIn')}
+            {!loading && <UserPlus />}
+            {t('signUp')}
           </Button>
         </form>
       </div>
 
       <p className="mt-4 text-center text-sm text-muted-fg">
-        {t('noAccount')}{' '}
-        <Link href="/register" className="font-medium text-primary hover:underline">
-          {t('createAccount')}
+        {t('haveAccount')}{' '}
+        <Link href="/login" className="font-medium text-primary hover:underline">
+          {t('signIn')}
         </Link>
       </p>
-      <p className="mt-2 text-center text-xs text-muted-fg">{t('demoHint')}</p>
       <p className="mt-6 text-center text-[11px] uppercase tracking-widest text-muted-fg/70">
         {tApp('title')}
       </p>

@@ -70,7 +70,8 @@ export function Waveform({
   return (
     <canvas
       ref={canvasRef}
-      aria-label="microphone level"
+      aria-label={active ? 'Microphone input level (live)' : 'Microphone input level (idle)'}
+      aria-live="off"
       role="img"
       style={{ width: '100%', height }}
       className="rounded-xl border border-border bg-surface-1"

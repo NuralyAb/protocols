@@ -8,15 +8,48 @@
     "upload": "Upload",
     "live": "Live",
     "settings": "Settings",
-    "skipToContent": "Skip to content"
+    "skipToContent": "Skip to content",
+    "madeWith": "Multilingual meeting protocols"
   },
   "accessibility": {
     "highContrast": "High contrast",
-    "largeCaptions": "Large captions"
+    "largeCaptions": "Large captions",
+    "darkMode": "Dark mode"
   },
   "cta": {
     "upload": "Upload audio",
     "startLive": "Start live meeting"
+  },
+  "landing": {
+    "badge": "AI meeting protocols",
+    "hero": {
+      "title": "Turn meetings into structured protocols — automatically.",
+      "subtitle": "Record live or upload audio. We transcribe Kazakh, Russian, and English (with code-switching), then generate clean minutes you can export to PDF, DOCX, JSON, SRT, or VTT.",
+      "cta": "Get started — it's free",
+      "demoHint": "Try it instantly with the demo account on the sign-in page."
+    },
+    "steps": {
+      "title": "How it works",
+      "subtitle": "Three steps from raw audio to a polished protocol.",
+      "record": { "title": "Record or upload", "body": "Stream from your microphone in real time, or drop in an existing recording up to 500 MB." },
+      "transcribe": { "title": "Transcribe & diarize", "body": "Whisper-grade ASR with speaker labels, timestamps, and per-segment language detection." },
+      "export": { "title": "Generate & export", "body": "Pick a template, let the LLM fill it with decisions and action items, then export anywhere." }
+    },
+    "features": {
+      "title": "Everything you need for clean minutes",
+      "subtitle": "Built for boards, councils, and product teams that take meetings seriously.",
+      "live": { "title": "Live transcription", "body": "Stream from the browser with partial-word updates and a live waveform." },
+      "upload": { "title": "Upload audio", "body": "WAV, MP3, M4A, OGG, FLAC, WEBM — processed in the background." },
+      "protocol": { "title": "Templated protocols", "body": "Mustache-based templates for agendas, decisions, votes, and action items." },
+      "multilingual": { "title": "KK · RU · EN", "body": "Multilingual ASR with code-switching support tuned for Kazakh meetings." },
+      "ai": { "title": "GPT-4o summaries", "body": "Structured summaries with citations back to the transcript." },
+      "private": { "title": "Self-hosted", "body": "Bring your own keys. Audio stays in your MinIO bucket — not on someone else's server." }
+    },
+    "finalCta": {
+      "title": "Ready to skip note-taking forever?",
+      "body": "Create a free account, drop in your first recording, and watch a protocol appear in minutes.",
+      "button": "Create free account"
+    }
   },
   "auth": {
     "title": "Sign in",
@@ -26,7 +59,18 @@
     "signIn": "Sign in",
     "signOut": "Sign out",
     "error": "Sign in failed",
-    "demoHint": "Demo: demo@protocol.ai / demo12345"
+    "demoHint": "Demo: demo@protocol.ai / demo12345",
+    "noAccount": "No account?",
+    "createAccount": "Create account",
+    "haveAccount": "Already have an account?",
+    "registerTitle": "Sign up",
+    "registerSubtitle": "Create an account to get started",
+    "fullName": "Full name",
+    "confirmPassword": "Confirm password",
+    "passwordMismatch": "Passwords do not match",
+    "passwordTooShort": "At least 8 characters",
+    "registerError": "Registration failed",
+    "signUp": "Sign up"
   },
   "dashboard": {
     "title": "My meetings",
@@ -37,6 +81,24 @@
       "processing": "Processing",
       "completed": "Completed",
       "failed": "Failed"
+    },
+    "search": {
+      "label": "Search",
+      "placeholder": "Filter by title or filename…",
+      "clear": "Clear search",
+      "noResultsTitle": "Nothing matches",
+      "noResultsBody": "Try a different keyword or clear the filters."
+    },
+    "filters": {
+      "statusLabel": "Status",
+      "dateLabel": "Date",
+      "all": "All",
+      "live": "Live",
+      "allTime": "All time",
+      "last24h": "Last 24h",
+      "last7d": "Last 7 days",
+      "last30d": "Last 30 days",
+      "reset": "Reset"
     }
   },
   "upload": {
@@ -82,6 +144,28 @@
     "selectLang": "Pick at least one language",
     "sessionCreated": "Session created",
     "error": "Error",
+    "connection": {
+      "lostTitle": "Connection lost — trying to reconnect",
+      "retryingIn": "Retry attempt {attempt} in {seconds}s. Audio is buffered locally.",
+      "retryingNow": "Retry attempt {attempt} in progress…",
+      "reconnect": "Reconnect now"
+    },
+    "snapshotHint": "Snapshot export in any format.",
+    "translate": {
+      "label": "Translate",
+      "off": "Off",
+      "loading": "Translating…"
+    },
+    "share": {
+      "title": "Share live view",
+      "hint": "Anyone with the QR code or link can read the live transcript — no login required.",
+      "linkLabel": "Public viewer link",
+      "copy": "Copy",
+      "copied": "Copied",
+      "copyFailed": "Could not copy link",
+      "rotate": "Rotate token",
+      "error": "Could not mint viewer token"
+    },
     "protocol": {
       "sectionTitle": "Generate protocol",
       "hint": "Pick a template and format. The LLM fills the template with facts from the transcript.",
@@ -122,6 +206,79 @@
     },
     "export": {
       "aria": "Export formats"
+    },
+    "recording": {
+      "title": "Recording",
+      "description": "Original audio of the meeting.",
+      "download": "Download audio",
+      "loadError": "Cannot load audio",
+      "unavailable": "Recording is not available.",
+      "unsupported": "Your browser cannot play this format — download the file instead."
+    },
+    "report": {
+      "title": "Generate report",
+      "description": "Pick a template and format. The model fills it with facts from the transcript.",
+      "templateLabel": "Template",
+      "formatLabel": "Format",
+      "generateBtn": "Generate",
+      "generating": "Generating…",
+      "done": "Report ready",
+      "error": "Failed to generate report",
+      "pickTemplate": "Pick a template",
+      "empty": "Transcript is empty — cannot generate a report."
+    }
+  },
+  "templates": {
+    "galleryLabel": "Protocol templates",
+    "addCustom": "Custom template",
+    "customBadge": "Custom",
+    "empty": "No templates available",
+    "uploadTitle": "Upload a custom template",
+    "uploadHint": "A markdown file with Mustache placeholders (e.g. {{chair}}, {{#items}}…{{/items}}). YAML frontmatter is optional.",
+    "nameLabel": "Name",
+    "namePlaceholder": "e.g. Board minutes",
+    "descriptionLabel": "Description",
+    "languageLabel": "Language",
+    "fileLabel": "File (.md)",
+    "bodyLabel": "or paste template text",
+    "bodyPlaceholder": "# Protocol\n\nDate: {{date}}\nChair: {{chair}}\n…",
+    "submit": "Upload",
+    "cancel": "Cancel",
+    "uploading": "Uploading…",
+    "uploaded": "Template added",
+    "uploadError": "Failed to upload template",
+    "nameRequired": "Enter a name",
+    "bodyRequired": "Attach a file or paste text"
+  },
+  "insights": {
+    "title": "Meeting insights",
+    "subtitle": "Speaker share, top topics, and key moments — generated after the recording.",
+    "totalsLine": "{segments} segments · {speakers} speakers · {duration}",
+    "whoSpoke": "Who spoke and how much",
+    "topics": "What was discussed",
+    "keyMoments": "Key moments",
+    "noWords": "Not enough text to summarize.",
+    "emptyHint": "Insights appear once the meeting has some transcribed content.",
+    "loadError": "Could not load insights"
+  },
+  "publicViewer": {
+    "viewerLabel": "Live viewer",
+    "untitled": "Live meeting",
+    "transcriptTitle": "Live transcript",
+    "transcriptHint": "Read-only view. New segments appear as they are spoken.",
+    "live": "Live",
+    "ended": "Ended",
+    "connected": "Connected",
+    "connecting": "Connecting…",
+    "waiting": "Waiting for the next utterance…",
+    "missingToken": "This link is missing a viewer token.",
+    "notFound": "This session is not available — the token may be invalid or revoked.",
+    "loadError": "Could not load this session.",
+    "errorTitle": "Cannot load viewer",
+    "translate": {
+      "label": "Translate",
+      "off": "Off",
+      "loading": "Translating…"
     }
   },
   "stages": {

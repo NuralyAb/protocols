@@ -10,7 +10,9 @@ from app.api.v1.schemas.sessions import (
     LiveSessionCreate,
     LiveSessionOut,
     ProtocolGenerateRequest,
+    PublicSessionOut,
     TemplateOut,
+    ViewerTokenOut,
 )
 
 __all__ = [
@@ -26,5 +28,7 @@ __all__ = [
     "LiveSessionCreate",
     "LiveSessionOut",
     "ProtocolGenerateRequest",
+    "PublicSessionOut",
     "TemplateOut",
+    "ViewerTokenOut",
 ]

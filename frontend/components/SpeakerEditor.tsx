@@ -6,16 +6,19 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card, CardHeader, CardTitle, CardBody, CardFooter } from '@/components/ui/Card';
 import { useToasts } from '@/components/ui/Toast';
-import { jobsApi, type Participant } from '@/lib/api';
+import { jobsApi, sessionsApi, type Participant } from '@/lib/api';
 
 type Row = { diarization_id: string; label: string; role: string };
+type PatchList = Array<{ diarization_id: string; label?: string; role?: string }>;
 
 export function SpeakerEditor({
   jobId,
+  sessionId,
   participants,
   onSaved,
 }: {
-  jobId: string;
+  jobId?: string;
+  sessionId?: string;
   participants: Participant[];
   onSaved?: () => void;
 }) {
@@ -39,15 +42,15 @@ export function SpeakerEditor({
 
   async function save() {
     setSaving(true);
+    const patches: PatchList = rows.map((r) => ({
+      diarization_id: r.diarization_id,
+      label: r.label || undefined,
+      role: r.role || undefined,
+    }));
     try {
-      await jobsApi.patchSpeakers(
-        jobId,
-        rows.map((r) => ({
-          diarization_id: r.diarization_id,
-          label: r.label || undefined,
-          role: r.role || undefined,
-        }))
-      );
+      if (jobId) await jobsApi.patchSpeakers(jobId, patches);
+      else if (sessionId) await sessionsApi.patchSpeakers(sessionId, patches);
+      else throw new Error('SpeakerEditor: need jobId or sessionId');
       push('success', t('saved'));
       onSaved?.();
     } catch (e: any) {

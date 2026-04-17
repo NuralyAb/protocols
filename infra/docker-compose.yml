@@ -98,7 +98,7 @@ services:
     volumes:
       - ../backend:/app
       - ../ml-models:/ml-models
-      - ../образцы:/templates:ro
+      - ../образцы:/templates
     ports:
       - "8000:8000"
     depends_on:

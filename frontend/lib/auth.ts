@@ -10,6 +10,7 @@ type AuthState = {
   user: User | null;
   hydrated: boolean;
   login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, fullName?: string) => Promise<void>;
   logout: () => void;
   fetchMe: () => Promise<void>;
 };
@@ -25,6 +26,14 @@ export const useAuth = create<AuthState>()(
         setAuthToken(data.access_token);
         set({ token: data.access_token });
         await get().fetchMe();
+      },
+      register: async (email, password, fullName) => {
+        await api.post('/api/v1/auth/register', {
+          email,
+          password,
+          full_name: fullName || null,
+        });
+        await get().login(email, password);
       },
       logout: () => {
         setAuthToken(null);

@@ -159,8 +159,15 @@ export default function UploadPage() {
         </fieldset>
 
         {uploading && (
-          <div className="space-y-1.5">
-            <div className="h-1.5 overflow-hidden rounded-full bg-muted-bg" aria-hidden>
+          <div className="space-y-1.5" aria-live="polite">
+            <div
+              className="h-1.5 overflow-hidden rounded-full bg-muted-bg"
+              role="progressbar"
+              aria-label={t('uploading', { pct: progress })}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={progress}
+            >
               <div
                 className="h-full rounded-full bg-primary transition-all duration-300 ease-out"
                 style={{ width: `${progress}%` }}

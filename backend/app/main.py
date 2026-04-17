@@ -7,7 +7,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app import __version__
-from app.api.v1.routes import auth, jobs, sessions
+from app.api.v1.routes import auth, jobs, sessions, translate
 from app.core.config import get_settings
 from app.core.limiter import limiter
 from app.core.logging import configure_logging, get_logger
@@ -63,4 +63,5 @@ API_V1 = "/api/v1"
 app.include_router(auth.router, prefix=f"{API_V1}/auth", tags=["auth"])
 app.include_router(jobs.router, prefix=API_V1, tags=["jobs"])
 app.include_router(sessions.router, prefix=f"{API_V1}/sessions", tags=["sessions"])
+app.include_router(translate.router, prefix=API_V1, tags=["translate"])
 app.include_router(ws_routes.router, tags=["ws"])
