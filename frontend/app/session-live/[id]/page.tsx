@@ -11,7 +11,10 @@ import {
   type Participant,
   type ProtocolFormat,
   type ProtocolTemplate,
+  type TranscriptSegment,
 } from '@/lib/api';
+
+type TranscriptLang = 'original' | 'ru' | 'kk' | 'en';
 import {
   Badge,
   Card,
@@ -47,6 +50,14 @@ export default function LiveSessionPage() {
   const [audio, setAudio] = useState<AudioInfo | null>(null);
   const [audioError, setAudioError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const [activeLang, setActiveLang] = useState<TranscriptLang>('original');
+  const [translations, setTranslations] = useState<Record<'ru' | 'kk' | 'en', TranscriptSegment[] | null>>({
+    ru: null,
+    kk: null,
+    en: null,
+  });
+  const [translating, setTranslating] = useState<TranscriptLang | null>(null);
 
   const [templates, setTemplates] = useState<ProtocolTemplate[]>([]);
   const [templateId, setTemplateId] = useState<string>('');
@@ -110,6 +121,30 @@ export default function LiveSessionPage() {
     });
     return map;
   }, [result]);
+
+  async function onSelectLang(lang: TranscriptLang) {
+    setActiveLang(lang);
+    if (lang === 'original') return;
+    if (translations[lang]) return;
+    setTranslating(lang);
+    try {
+      const r = await sessionsApi.translate(id, lang);
+      setTranslations((prev) => ({ ...prev, [lang]: r.data.segments }));
+    } catch (e: any) {
+      push('error', e?.response?.data?.detail || 'Translation failed');
+      setActiveLang('original');
+    } finally {
+      setTranslating(null);
+    }
+  }
+
+  const displayResult = useMemo<JobResult | null>(() => {
+    if (!result) return null;
+    if (activeLang === 'original') return result;
+    const segs = translations[activeLang];
+    if (!segs) return result;
+    return { ...result, transcript: segs };
+  }, [result, activeLang, translations]);
 
   async function onGenerate() {
     if (!templateId || !result) return;
@@ -246,8 +281,39 @@ export default function LiveSessionPage() {
         <CardHeader>
           <CardTitle>{t('transcript')}</CardTitle>
         </CardHeader>
-        <CardBody>
-          <TranscriptView result={result} speakers={speakers} />
+        <CardBody className="space-y-3">
+          <div role="tablist" className="flex flex-wrap gap-1 border-b border-border pb-2">
+            {([
+              ['original', 'Оригинал'],
+              ['ru', 'RU'],
+              ['kk', 'KK'],
+              ['en', 'EN'],
+            ] as const).map(([key, label]) => {
+              const active = activeLang === key;
+              const loading = translating === key;
+              return (
+                <button
+                  key={key}
+                  role="tab"
+                  aria-selected={active}
+                  type="button"
+                  onClick={() => onSelectLang(key)}
+                  disabled={loading}
+                  className={
+                    'rounded-md px-3 py-1.5 text-sm font-medium transition-colors ' +
+                    (active
+                      ? 'bg-primary text-primary-fg'
+                      : 'text-muted-fg hover:bg-surface-2 hover:text-fg')
+                  }
+                >
+                  {loading ? '…' : label}
+                </button>
+              );
+            })}
+          </div>
+          {displayResult ? (
+            <TranscriptView result={displayResult} speakers={speakers} />
+          ) : null}
         </CardBody>
       </Card>
 

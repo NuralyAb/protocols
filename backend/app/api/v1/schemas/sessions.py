@@ -19,6 +19,7 @@ class LiveSessionOut(BaseModel):
     asr_provider: str = "local"
     audio_key: str | None = None
     viewer_token: str | None = None
+    friendly_id: str | None = None
     started_at: datetime
     ended_at: datetime | None = None
 

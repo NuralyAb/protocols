@@ -32,7 +32,8 @@ RUN pip install --upgrade pip && pip install \
     "boto3==1.35.36" "aioboto3==13.2.0" "httpx>=0.27" "structlog>=24.4" \
     "slowapi>=0.1.9" "tenacity>=9.0" "orjson>=3.10" \
     "jinja2>=3.1" "python-docx>=1.1" "weasyprint>=63.0" \
-    "numpy>=1.26" "websockets>=13" "openai>=1.54"
+    "numpy>=1.26" "websockets>=13" "openai>=1.54" \
+    "python-telegram-bot>=21"
 
 COPY . .
 

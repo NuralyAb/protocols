@@ -73,4 +73,70 @@ def translate(text: str, source: str, target: str) -> str:
     return (resp.output_text or "").strip()
 
 
-__all__ = ["translate", "SUPPORTED"]
+_BATCH_INSTRUCT = (
+    "You translate numbered transcript lines to {tgt}.\n"
+    "Rules:\n"
+    "— Return a JSON object: {{\"items\": [<string>, <string>, ...]}} with EXACTLY {n} items, in the same order.\n"
+    "— Each item is the translation of the correspondingly-numbered line.\n"
+    "— If a source line is already in {tgt}, return it unchanged.\n"
+    "— Preserve proper nouns, numbers, dates, IDs verbatim.\n"
+    "— Do not merge, split, or re-order lines. Partial sentences stay partial.\n"
+    "— No preamble, no quotes, no markdown."
+)
+
+
+def translate_batch(texts: list[str], target: str) -> list[str]:
+    """Translate many transcript segments in a single LLM call.
+
+    Returns a list of translations aligned 1:1 with `texts`. Empty strings are
+    preserved as empty. Failures fall back to the original text for that slot.
+    """
+    import json
+
+    tgt = (target or "").lower()
+    if tgt not in SUPPORTED:
+        raise ValueError(f"Unsupported target language: {target}")
+    if not texts:
+        return []
+
+    indexed = [(i, (t or "").strip()) for i, t in enumerate(texts)]
+    non_empty = [(i, t) for i, t in indexed if t]
+    out: list[str] = ["" for _ in texts]
+    if not non_empty:
+        return out
+
+    settings = get_settings()
+    client = _client()
+
+    payload = "\n".join(f"{k}. {t}" for k, (_, t) in enumerate(non_empty, start=1))
+    instructions = _BATCH_INSTRUCT.format(tgt=_NAME[tgt], n=len(non_empty))  # type: ignore[index]
+
+    log.info("llm.translate.batch", tgt=tgt, n=len(non_empty))
+    resp = client.responses.create(
+        model=settings.llm_model,
+        instructions=instructions,
+        input=[{"role": "user", "content": payload}],
+        response_format={"type": "json_object"},  # type: ignore[arg-type]
+    )
+    raw = (resp.output_text or "").strip()
+    try:
+        parsed = json.loads(raw)
+        items = parsed.get("items") if isinstance(parsed, dict) else None
+        if not isinstance(items, list):
+            raise ValueError("items missing")
+    except Exception as e:  # noqa: BLE001
+        log.warning("llm.translate.batch_parse_failed", err=str(e), sample=raw[:200])
+        # Fallback: use original text
+        for i, t in non_empty:
+            out[i] = t
+        return out
+
+    for slot, (orig_idx, orig_text) in enumerate(non_empty):
+        if slot < len(items) and isinstance(items[slot], str) and items[slot].strip():
+            out[orig_idx] = items[slot].strip()
+        else:
+            out[orig_idx] = orig_text
+    return out
+
+
+__all__ = ["translate", "translate_batch", "SUPPORTED"]

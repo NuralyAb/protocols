@@ -217,6 +217,11 @@ export const sessionsApi = {
     api.get<{ url: string; download_url: string; filename: string; content_type: string }>(
       `/api/v1/sessions/${id}/audio`
     ),
+  translate: (id: string, lang: 'ru' | 'kk' | 'en') =>
+    api.get<{ lang: string; segments: TranscriptSegment[] }>(
+      `/api/v1/sessions/${id}/translate`,
+      { params: { lang } }
+    ),
   snapshot: (id: string) => api.get<JobResult>(`/api/v1/sessions/${id}/snapshot`),
   exportUrl: (id: string, format: 'pdf' | 'docx' | 'json' | 'txt' | 'srt' | 'vtt') =>
     `${api.defaults.baseURL}/api/v1/sessions/${id}/export?format=${format}`,

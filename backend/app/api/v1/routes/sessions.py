@@ -26,6 +26,7 @@ from app.services.summarization.templates import (
     list_templates,
     save_custom_template,
 )
+from app.services.summarization.translator import SUPPORTED as TRANSLATE_LANGS, translate_batch
 
 router = APIRouter()
 
@@ -86,13 +87,44 @@ async def list_sessions(user: CurrentUser, db: DBSession, limit: int = 50) -> li
     return list(rows.all())
 
 
+def _gen_friendly_id_base(now: "datetime | None" = None) -> str:
+    """`DDMMYYYY-HHMM` in Asia/Almaty (UTC+5)."""
+    from datetime import datetime, timezone
+    try:
+        from zoneinfo import ZoneInfo
+        tz = ZoneInfo("Asia/Almaty")
+    except Exception:  # pragma: no cover
+        tz = timezone.utc
+    n = (now or datetime.now(tz=timezone.utc)).astimezone(tz)
+    return f"{n.day:02d}{n.month:02d}{n.year:04d}-{n.hour:02d}{n.minute:02d}"
+
+
+async def _allocate_friendly_id(db) -> str:
+    base = _gen_friendly_id_base()
+    candidate = base
+    suffix = 1
+    while True:
+        exists = await db.scalar(
+            select(LiveSession.id).where(LiveSession.friendly_id == candidate)
+        )
+        if not exists:
+            return candidate
+        suffix += 1
+        candidate = f"{base}-{suffix}"
+        if suffix > 99:  # absurd, but guard against runaway loop
+            import secrets as _s
+            return f"{base}-{_s.token_hex(2)}"
+
+
 @router.post("", response_model=LiveSessionOut, status_code=status.HTTP_201_CREATED)
 async def create_session(body: LiveSessionCreate, user: CurrentUser, db: DBSession) -> LiveSession:
+    fid = await _allocate_friendly_id(db)
     s = LiveSession(
         owner_id=user.id,
         title=body.title,
         languages=body.languages,
         asr_provider=body.asr_provider,
+        friendly_id=fid,
     )
     db.add(s)
     await db.commit()
@@ -177,6 +209,81 @@ async def _build_result(session_id: UUID, db) -> dict:
 async def session_snapshot(session_id: UUID, user: CurrentUser, db: DBSession) -> dict:
     await _load_session(session_id, user, db)
     return await _build_result(session_id, db)
+
+
+@router.get("/{session_id}/translate")
+async def translate_session_transcript(
+    session_id: UUID,
+    user: CurrentUser,
+    db: DBSession,
+    lang: Literal["ru", "kk", "en"] = Query(..., description="Target language"),
+) -> dict:
+    """Translate the transcript to a target language. Cached per-segment in DB."""
+    await _load_session(session_id, user, db)
+    rows = (
+        await db.scalars(
+            select(TranscriptSegment)
+            .where(TranscriptSegment.session_id == session_id)
+            .order_by(TranscriptSegment.start_ms)
+        )
+    ).all()
+    if not rows:
+        return {"lang": lang, "segments": [], "cached": 0, "translated": 0}
+
+    # Pass 1: collect what's missing.
+    out_text: list[str] = [""] * len(rows)
+    missing_indices: list[int] = []
+    missing_texts: list[str] = []
+    for i, r in enumerate(rows):
+        cached = (r.translations or {}).get(lang)
+        if isinstance(cached, str):
+            out_text[i] = cached
+            continue
+        orig = (r.text or "").strip()
+        if not orig:
+            out_text[i] = ""
+            continue
+        missing_indices.append(i)
+        missing_texts.append(orig)
+
+    # Pass 2: translate missing + persist.
+    if missing_texts:
+        try:
+            translated = await _run_sync_translate(missing_texts, lang)
+        except Exception as e:  # noqa: BLE001
+            raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"Translation failed: {e}") from e
+
+        for slot, idx in enumerate(missing_indices):
+            new_text = translated[slot] if slot < len(translated) else missing_texts[slot]
+            out_text[idx] = new_text
+            existing = dict(rows[idx].translations or {})
+            existing[lang] = new_text
+            rows[idx].translations = existing
+        await db.commit()
+
+    segments = [
+        {
+            "speaker": r.speaker_diarization_id or "SPEAKER_00",
+            "language": lang,
+            "start_time": r.start_ms,
+            "end_time": r.end_ms,
+            "text": out_text[i],
+            "confidence": r.confidence,
+        }
+        for i, r in enumerate(rows)
+    ]
+    return {
+        "lang": lang,
+        "segments": segments,
+        "cached": len(rows) - len(missing_texts),
+        "translated": len(missing_texts),
+    }
+
+
+async def _run_sync_translate(texts: list[str], lang: str) -> list[str]:
+    import asyncio
+
+    return await asyncio.to_thread(translate_batch, texts, lang)
 
 
 @router.get("/{session_id}/audio")
@@ -383,6 +490,54 @@ async def public_session_transcript(
     """Snapshot of the public-readable transcript. Polling fallback if WS isn't usable."""
     await _load_public_session(session_id, token, db)
     return await _build_result(session_id, db)
+
+
+@router.get("/by_friendly_id/{friendly_id}", response_model=LiveSessionOut)
+async def session_by_friendly_id(
+    friendly_id: str, user: CurrentUser, db: DBSession
+) -> LiveSession:
+    """Resolve a short DDMMYYYY-HHMM code (used by the Telegram bot) to the full session."""
+    s = await db.scalar(
+        select(LiveSession).where(
+            LiveSession.friendly_id == friendly_id,
+            LiveSession.owner_id == user.id,
+        )
+    )
+    if not s:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
+    return s
+
+
+@router.get("/{session_id}/qa")
+async def session_qa(
+    session_id: UUID,
+    user: CurrentUser,
+    db: DBSession,
+    question: str = Query(..., min_length=1, max_length=2000),
+    lang: Literal["ru", "kk", "en"] | None = Query(None),
+    k: int = Query(6, ge=1, le=20),
+) -> dict:
+    """Answer a free-form question about the session transcript via RAG."""
+    import asyncio
+
+    from app.services.qa import answer as qa_answer, pick_lang
+
+    await _load_session(session_id, user, db)
+    result = await _build_result(session_id, db)
+    transcript = result.get("transcript") or []
+    if not transcript:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Transcript is empty")
+
+    languages = result.get("metadata", {}).get("languages_detected") or None
+    resolved_lang = pick_lang(lang, languages)
+    return await asyncio.to_thread(
+        qa_answer,
+        str(session_id),
+        transcript,
+        question,
+        lang=resolved_lang,
+        k=k,
+    )
 
 
 @router.get("/{session_id}/insights")

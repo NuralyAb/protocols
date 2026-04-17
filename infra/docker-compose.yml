@@ -130,6 +130,21 @@ services:
               count: 1
               capabilities: [gpu]
 
+  bot:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    command: python -m app.bot
+    environment:
+      <<: *api-env
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      BOT_API_URL: http://api:8000
+    volumes:
+      - ../backend:/app
+    depends_on:
+      - api
+    restart: unless-stopped
+
   flower:
     build:
       context: ../backend
