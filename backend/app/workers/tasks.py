@@ -51,6 +51,7 @@ def process_audio(self, job_id: str) -> dict[str, Any]:
                 source_bucket=settings.s3_bucket_media,
                 source_key=job.source_key,
                 languages_hint=job.languages_hint,
+                asr_provider=job.asr_provider,
                 progress_cb=_progress,
             )
         except Exception as e:  # noqa: BLE001

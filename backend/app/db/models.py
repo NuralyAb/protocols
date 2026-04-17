@@ -82,6 +82,8 @@ class Job(Base):
     source_filename: Mapped[str | None] = mapped_column(String(500))
     duration_ms: Mapped[int | None] = mapped_column(Integer)
     languages_hint: Mapped[list[str] | None] = mapped_column(JSON)
+    asr_provider: Mapped[str | None] = mapped_column(String(32))  # per-job override
+    friendly_id: Mapped[str | None] = mapped_column(String(32), unique=True, index=True)
 
     result: Mapped[dict | None] = mapped_column(JSON)  # full protocol JSON snapshot
     model_versions: Mapped[dict | None] = mapped_column(JSON)

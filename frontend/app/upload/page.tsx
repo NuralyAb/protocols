@@ -5,20 +5,35 @@ import { useTranslations } from 'next-intl';
 import { UploadCloud, FileAudio, X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
-import { Input, Field, Chip } from '@/components/ui/Input';
+import { Input, Field, Chip, Select } from '@/components/ui/Input';
 import { useToasts } from '@/components/ui/Toast';
-import { jobsApi } from '@/lib/api';
+import { jobsApi, type AsrProvider } from '@/lib/api';
 import { cn } from '@/lib/cn';
 
 const ACCEPT = '.wav,.mp3,.m4a,.ogg,.flac,.webm,audio/*';
 
 export default function UploadPage() {
   const t = useTranslations('upload');
+  const tLive = useTranslations('live');
   const router = useRouter();
   const push = useToasts((s) => s.push);
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState('');
   const [langs, setLangs] = useState({ kk: true, ru: true, en: false });
+  const [asrProvider, setAsrProvider] = useState<AsrProvider>('openai_transcribe');
+
+  const providerHint =
+    asrProvider === 'openai'
+      ? tLive('providerOpenaiHint')
+      : asrProvider === 'openai_transcribe'
+      ? tLive('providerOpenaiTranscribeHint')
+      : asrProvider === 'hf_space'
+      ? tLive('providerHfSpaceHint')
+      : asrProvider === 'hf_kazakh'
+      ? tLive('providerHfKazakhHint')
+      : asrProvider === 'local_kazakh'
+      ? tLive('providerLocalKazakhHint')
+      : tLive('providerLocalHint');
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -44,7 +59,13 @@ export default function UploadPage() {
     setUploading(true);
     setProgress(0);
     try {
-      const r = await jobsApi.upload(file, active.join(','), title || undefined, setProgress);
+      const r = await jobsApi.upload(
+        file,
+        active.join(','),
+        title || undefined,
+        setProgress,
+        asrProvider,
+      );
       push('success', t('queued'));
       router.push(`/session/${r.data.job_id}`);
     } catch (err: any) {
@@ -157,6 +178,21 @@ export default function UploadPage() {
           </div>
           <p className="text-xs text-muted-fg">{t('languagesHint')}</p>
         </fieldset>
+
+        <Field label={tLive('providerLabel')} htmlFor="asr" hint={providerHint}>
+          <Select
+            id="asr"
+            value={asrProvider}
+            onChange={(e) => setAsrProvider(e.target.value as AsrProvider)}
+          >
+            <option value="openai_transcribe">{tLive('providerOpenaiTranscribe')}</option>
+            <option value="openai">{tLive('providerOpenai')}</option>
+            <option value="hf_space">{tLive('providerHfSpace')}</option>
+            <option value="hf_kazakh">{tLive('providerHfKazakh')}</option>
+            <option value="local_kazakh">{tLive('providerLocalKazakh')}</option>
+            <option value="local">{tLive('providerLocal')}</option>
+          </Select>
+        </Field>
 
         {uploading && (
           <div className="space-y-1.5" aria-live="polite">

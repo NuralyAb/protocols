@@ -74,9 +74,12 @@ def run_offline_pipeline(
     source_bucket: str,
     source_key: str,
     languages_hint: list[str] | None = None,
+    asr_provider: str | None = None,
     progress_cb=None,
 ) -> dict[str, Any]:
     settings = get_settings()
+    # Per-job override wins over the global settings.asr_provider.
+    provider = asr_provider or settings.asr_provider
 
     def progress(p: int, stage: str) -> None:
         if progress_cb:
@@ -102,28 +105,44 @@ def run_offline_pipeline(
 
         progress(55, "asr")
         force_lang = languages_hint[0] if languages_hint and len(languages_hint) == 1 else None
-        if settings.asr_provider == "openai" and settings.openai_api_key:
+
+        if provider in ("openai", "openai_transcribe") and settings.openai_api_key:
             from app.services.asr.openai_asr import transcribe_file_openai
 
             raw = transcribe_file_openai(wav, language=force_lang)
             asr_segments = [
                 WhisperSegment(
-                    start_ms=s.start_ms,
-                    end_ms=s.end_ms,
-                    text=s.text,
-                    language=s.language,
-                    avg_logprob=s.avg_logprob,
-                    no_speech_prob=s.no_speech_prob,
-                )
-                for s in raw
+                    start_ms=s.start_ms, end_ms=s.end_ms, text=s.text,
+                    language=s.language, avg_logprob=s.avg_logprob, no_speech_prob=s.no_speech_prob,
+                ) for s in raw
             ]
             asr_model_label = settings.openai_asr_model
+        elif provider == "openai_whisper" and settings.openai_api_key:
+            from app.services.asr.openai_asr import transcribe_file_openai
+
+            # Force whisper-1 by swapping config for this call.
+            raw = transcribe_file_openai(wav, language=force_lang, model_override="whisper-1")
+            asr_segments = [
+                WhisperSegment(
+                    start_ms=s.start_ms, end_ms=s.end_ms, text=s.text,
+                    language=s.language, avg_logprob=s.avg_logprob, no_speech_prob=s.no_speech_prob,
+                ) for s in raw
+            ]
+            asr_model_label = "whisper-1"
+        elif provider == "hf_space":
+            from app.services.asr.hf_space import transcribe_file_space
+
+            raw = transcribe_file_space(str(wav), language=force_lang or "kk")
+            asr_segments = [
+                WhisperSegment(
+                    start_ms=s.start_ms, end_ms=s.end_ms, text=s.text,
+                    language=s.language, avg_logprob=s.avg_logprob, no_speech_prob=s.no_speech_prob,
+                ) for s in raw
+            ]
+            asr_model_label = "hf_space:nuraly17/kazakh-asr"
         else:
             asr_segments = transcribe_file(
-                wav,
-                language=force_lang,
-                languages_hint=languages_hint,
-                vad_filter=True,
+                wav, language=force_lang, languages_hint=languages_hint, vad_filter=True,
             )
             asr_model_label = settings.asr_model
 
@@ -186,7 +205,7 @@ def run_offline_pipeline(
                 "languages_detected": languages_detected,
                 "model_versions": {
                     "asr": asr_model_label,
-                    "asr_provider": settings.asr_provider,
+                    "asr_provider": provider,
                     "diarization": settings.diarization_model,
                     "pipeline": "offline@v1",
                 },

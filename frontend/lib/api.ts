@@ -79,11 +79,18 @@ export type JobBrief = {
 
 export const jobsApi = {
   list: () => api.get<JobBrief[]>('/api/v1/jobs'),
-  upload: (file: File, languages: string, title?: string, onProgress?: (pct: number) => void) => {
+  upload: (
+    file: File,
+    languages: string,
+    title?: string,
+    onProgress?: (pct: number) => void,
+    asrProvider?: string,
+  ) => {
     const fd = new FormData();
     fd.append('file', file);
     fd.append('languages', languages);
     if (title) fd.append('title', title);
+    if (asrProvider) fd.append('asr_provider', asrProvider);
     return api.post<{ job_id: string; status: JobStatus }>('/api/v1/build_protocol', fd, {
       headers: { 'Content-Type': 'multipart/form-data' },
       onUploadProgress: (e) => {
@@ -127,6 +134,7 @@ export type JobAudio = {
 export type AsrProvider =
   | 'openai'
   | 'openai_transcribe'
+  | 'openai_whisper'
   | 'local'
   | 'local_kazakh'
   | 'hf_kazakh'

@@ -79,6 +79,7 @@ async def build_protocol(
     file: UploadFile = File(...),
     title: str | None = Form(default=None),
     languages: str | None = Form(default="kk,ru,en"),
+    asr_provider: str | None = Form(default=None),
 ) -> JobCreateResponse:
     if not _ext_ok(file.filename) and (file.content_type not in ALLOWED_AUDIO_TYPES):
         raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, f"Unsupported: {file.filename} / {file.content_type}")
@@ -97,6 +98,12 @@ async def build_protocol(
     await upload_fileobj(settings.s3_bucket_media, key, file.file, content_type=file.content_type)
 
     lang_hint = [x.strip() for x in (languages or "").split(",") if x.strip()] or None
+    allowed_providers = {
+        "openai", "openai_transcribe", "openai_whisper",
+        "hf_space", "hf_kazakh",
+        "local", "local_kazakh",
+    }
+    provider = asr_provider if asr_provider in allowed_providers else None
 
     job = Job(
         owner_id=user.id,
@@ -104,6 +111,7 @@ async def build_protocol(
         source_key=key,
         source_filename=file.filename,
         languages_hint=lang_hint,
+        asr_provider=provider,
         status=JobStatus.pending,
     )
     db.add(job)

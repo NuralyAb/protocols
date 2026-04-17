@@ -49,6 +49,7 @@ function mmss(ms: number) {
 const PROVIDER_LABELS: Record<AsrProvider, string> = {
   openai: 'OpenAI Realtime',
   openai_transcribe: 'gpt-4o-transcribe',
+  openai_whisper: 'whisper-1',
   hf_space: 'HF Space',
   hf_kazakh: 'HF Kazakh',
   local_kazakh: 'Local Kazakh',

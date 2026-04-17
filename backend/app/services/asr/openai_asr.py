@@ -45,8 +45,12 @@ _PROMPTS = {
 }
 
 
-def _split_audio(wav_path: Path, chunk_sec: int = 900) -> list[tuple[Path, int]]:
-    """Split a long WAV into ≤25MB chunks. Returns [(path, offset_ms), ...]."""
+def _split_audio(wav_path: Path, chunk_sec: int = 600) -> list[tuple[Path, int]]:
+    """Split a long WAV into ≤25MB chunks. Returns [(path, offset_ms), ...].
+
+    16 kHz mono PCM16 is ~1.83 MB/min, so 10 min ≈ 18 MB — well under OpenAI's
+    25 MB cap. Earlier 15-min chunks produced ~29 MB files and got 500s back.
+    """
     size = wav_path.stat().st_size
     if size <= MAX_FILE_BYTES:
         return [(wav_path, 0)]
@@ -82,18 +86,19 @@ def _call_openai(wav: Path, model: str, language: str | None):
     from openai import APIError, RateLimitError  # noqa: F401 (caller catches)
 
     client = _client()
+    # gpt-4o-transcribe rejects verbose_json; only whisper-1 supports it.
+    supports_verbose = model == "whisper-1"
     with open(wav, "rb") as f:
         kwargs = {
             "file": f,
             "model": model,
-            "response_format": "verbose_json",
+            "response_format": "verbose_json" if supports_verbose else "json",
         }
         if language:
             kwargs["language"] = language
             if language in _PROMPTS:
                 kwargs["prompt"] = _PROMPTS[language]
-        # gpt-4o-transcribe supports segment timestamps; whisper-1 always does.
-        if model != "gpt-4o-mini-transcribe":
+        if supports_verbose:
             kwargs["timestamp_granularities"] = ["segment"]
         return client.audio.transcriptions.create(**kwargs)
 
@@ -101,8 +106,12 @@ def _call_openai(wav: Path, model: str, language: str | None):
 def transcribe_file_openai(
     wav_path: str | Path,
     language: str | None = None,
+    model_override: str | None = None,
 ) -> list[OpenAISegment]:
-    """Transcribe a WAV via OpenAI with automatic chunking + model fallback."""
+    """Transcribe a WAV via OpenAI with automatic chunking + model fallback.
+
+    If `model_override` is given, that model is tried first (fallback still applies).
+    """
     from openai import APIError, RateLimitError
 
     s = get_settings()
@@ -112,10 +121,12 @@ def transcribe_file_openai(
     all_segs: list[OpenAISegment] = []
     used_model: str | None = None
 
+    primary = model_override or s.openai_asr_model
+
     for chunk_path, offset_ms in chunks:
         resp = None
         last_err: Exception | None = None
-        for model in (s.openai_asr_model, s.openai_asr_fallback):
+        for model in (primary, s.openai_asr_fallback):
             try:
                 log.info("openai.asr.call", model=model, path=str(chunk_path.name), offset_ms=offset_ms)
                 resp = _call_openai(chunk_path, model, language)
