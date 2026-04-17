@@ -33,7 +33,8 @@ RUN pip install --upgrade pip && pip install \
     "slowapi>=0.1.9" "tenacity>=9.0" "orjson>=3.10" \
     "jinja2>=3.1" "python-docx>=1.1" "weasyprint>=63.0" \
     "numpy>=1.26" "websockets>=13" "openai>=1.54" \
-    "python-telegram-bot>=21"
+    "python-telegram-bot>=21" \
+    "gradio-client>=1.0"
 
 COPY . .
 

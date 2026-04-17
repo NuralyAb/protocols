@@ -127,6 +127,8 @@
     "languages": "Языки",
     "providerLabel": "Модель распознавания",
     "providerOpenai": "OpenAI (gpt-4o-transcribe — лучшее качество, ~$0.05/мин)",
+    "providerHfSpace": "HF Space — моя модель (nuraly17/kazakh-asr, Whisper-ksc2)",
+    "providerHfSpaceHint": "Твой HuggingFace Space. Первый запрос ~30 сек (cold start), дальше быстрее. Если приватный — нужен HUGGINGFACE_TOKEN.",
     "providerHfKazakh": "HuggingFace Kazakh (модель крутится у HF, бесплатно, без локального GPU)",
     "providerLocalKazakh": "Local Kazakh (whisper-turbo-ksc2 — на твоём GPU, бесплатно)",
     "providerLocal": "Локально (faster-whisper large-v3, kk хуже, бесплатно)",

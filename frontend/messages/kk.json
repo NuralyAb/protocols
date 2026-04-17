@@ -127,6 +127,8 @@
     "languages": "Тілдер",
     "providerLabel": "Тану моделі",
     "providerOpenai": "OpenAI (gpt-4o-transcribe — үздік сапа, ~$0.05/мин)",
+    "providerHfSpace": "HF Space — менің моделім (nuraly17/kazakh-asr)",
+    "providerHfSpaceHint": "Сіздің HuggingFace Space. Алғашқы сұраныс ~30 сек, кейін жылдам. Жеке Space үшін HUGGINGFACE_TOKEN қажет.",
     "providerHfKazakh": "HuggingFace Kazakh (HF серверінде, тегін, GPU қажет емес)",
     "providerLocalKazakh": "Local Kazakh (whisper-turbo-ksc2 — сіздің GPU-де, тегін)",
     "providerLocal": "Локалды (faster-whisper large-v3, kk үшін орташа, тегін)",

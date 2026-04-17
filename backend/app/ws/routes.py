@@ -141,7 +141,9 @@ async def session_ws(
     provider = getattr(session, "asr_provider", "local") or "local"
     use_openai = provider == "openai" and bool(settings.openai_api_key)
     prefer_kazakh = provider == "local_kazakh"
-    use_hf = provider == "hf_kazakh"
+    # HF Inference API for Uali/* is 404 — route both KK-on-HF options to the Space.
+    use_space = provider in ("hf_space", "hf_kazakh")
+    use_hf = False
 
     await hub.attach(session_id, websocket)
     await websocket.send_json({
@@ -156,7 +158,7 @@ async def session_ws(
     else:
         await _run_local(
             websocket, session, user_id, language,
-            prefer_kazakh=prefer_kazakh, use_hf=use_hf,
+            prefer_kazakh=prefer_kazakh, use_hf=use_hf, use_space=use_space,
         )
 
     await hub.detach(session_id, websocket)
@@ -205,6 +207,7 @@ async def _run_local(
     language: str | None,
     prefer_kazakh: bool = False,
     use_hf: bool = False,
+    use_space: bool = False,
 ) -> None:
     stream = SessionStream(
         session_id=str(session.id),
@@ -212,6 +215,7 @@ async def _run_local(
         language=language,
         prefer_kazakh=prefer_kazakh,
         use_hf=use_hf,
+        use_space=use_space,
     )
     recording = bytearray()
     try:

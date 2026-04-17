@@ -127,6 +127,8 @@
     "languages": "Languages",
     "providerLabel": "Speech recognition model",
     "providerOpenai": "OpenAI (gpt-4o-transcribe — best quality, ~$0.05/min)",
+    "providerHfSpace": "HF Space — my model (nuraly17/kazakh-asr)",
+    "providerHfSpaceHint": "Your HuggingFace Space. First request ~30 s (cold start), then fast. Needs HUGGINGFACE_TOKEN if private.",
     "providerHfKazakh": "HuggingFace Kazakh (runs on HF servers, free, no local GPU)",
     "providerLocalKazakh": "Local Kazakh (whisper-turbo-ksc2 — on your GPU, free)",
     "providerLocal": "Local (faster-whisper large-v3, mediocre kk, free)",

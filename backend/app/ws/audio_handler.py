@@ -66,7 +66,7 @@ def _pcm16_to_wav_bytes(pcm: np.ndarray, sample_rate: int = SAMPLE_RATE) -> byte
 
 class SessionStream:
     __slots__ = (
-        "session_id", "language", "user_id", "prefer_kazakh", "use_hf",
+        "session_id", "language", "user_id", "prefer_kazakh", "use_hf", "use_space",
         "_buf", "_t0", "_last_voice_ms", "_silence_ms",
         "_voiced", "_lock", "_celery", "_utt_offset_ms",
     )
@@ -78,12 +78,14 @@ class SessionStream:
         language: str | None = None,
         prefer_kazakh: bool = False,
         use_hf: bool = False,
+        use_space: bool = False,
     ) -> None:
         self.session_id = session_id
         self.user_id = user_id
         self.language = language
         self.prefer_kazakh = prefer_kazakh
         self.use_hf = use_hf
+        self.use_space = use_space
         self._buf: list[np.ndarray] = []
         self._t0 = time.monotonic()
         self._last_voice_ms = 0
@@ -164,6 +166,7 @@ class SessionStream:
                 self.language,
                 self.prefer_kazakh,
                 self.use_hf,
+                self.use_space,
             ],
             queue="asr",
         )
