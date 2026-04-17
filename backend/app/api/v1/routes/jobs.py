@@ -263,8 +263,15 @@ async def generate_job_protocol(
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"LLM error: {e}") from e
 
     safe_title = (job.title or f"protocol_{job.id}").replace('"', "").strip()
+    from urllib.parse import quote as _q
+
+    _ascii = safe_title.encode("ascii", "ignore").decode("ascii").strip() or f"protocol_{job.id}"
+    _cd = (
+        f'attachment; filename="{_ascii}.{body.format}"; '
+        f"filename*=UTF-8''{_q(safe_title)}.{body.format}"
+    )
     headers = {
-        "Content-Disposition": f'attachment; filename="{safe_title}.{body.format}"',
+        "Content-Disposition": _cd,
         "Cache-Control": "no-store",
         "X-Template-Id": template.meta.id,
     }
@@ -341,11 +348,17 @@ async def export_job(
         await db.rollback()
 
     safe_name = (job.title or f"protocol_{job.id}").replace('"', "").strip()
+    from urllib.parse import quote as _q2
+
+    _ascii2 = safe_name.encode("ascii", "ignore").decode("ascii").strip() or f"protocol_{job.id}"
     return Response(
         content=body,
         media_type=content_type,
         headers={
-            "Content-Disposition": f'attachment; filename="{safe_name}.{ext}"',
+            "Content-Disposition": (
+                f'attachment; filename="{_ascii2}.{ext}"; '
+                f"filename*=UTF-8''{_q2(safe_name)}.{ext}"
+            ),
             "Cache-Control": "no-store",
         },
     )

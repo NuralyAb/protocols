@@ -384,12 +384,22 @@ async def generate_session_protocol(
 
     safe_title = (session.title or f"protocol_{session.id}").replace('"', "").strip()
 
+    def _cd(ext: str) -> str:
+        """Content-Disposition with RFC 5987 encoded fallback for non-latin titles."""
+        from urllib.parse import quote
+
+        ascii_name = safe_title.encode("ascii", "ignore").decode("ascii").strip() or f"protocol_{session.id}"
+        return (
+            f'attachment; filename="{ascii_name}.{ext}"; '
+            f"filename*=UTF-8''{quote(safe_title)}.{ext}"
+        )
+
     if body.format == "markdown":
         return Response(
             content=markdown.encode("utf-8"),
             media_type="text/markdown; charset=utf-8",
             headers={
-                "Content-Disposition": f'attachment; filename="{safe_title}.md"',
+                "Content-Disposition": _cd("md"),
                 "Cache-Control": "no-store",
                 "X-Template-Id": template.meta.id,
             },
@@ -401,7 +411,7 @@ async def generate_session_protocol(
             content=data,
             media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             headers={
-                "Content-Disposition": f'attachment; filename="{safe_title}.docx"',
+                "Content-Disposition": _cd("docx"),
                 "Cache-Control": "no-store",
                 "X-Template-Id": template.meta.id,
             },
@@ -413,7 +423,7 @@ async def generate_session_protocol(
             content=data,
             media_type="application/pdf",
             headers={
-                "Content-Disposition": f'attachment; filename="{safe_title}.pdf"',
+                "Content-Disposition": _cd("pdf"),
                 "Cache-Control": "no-store",
                 "X-Template-Id": template.meta.id,
             },

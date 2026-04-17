@@ -29,9 +29,11 @@ log = get_logger("ws.audio")
 SAMPLE_RATE = 16_000
 FRAME_MS = 40
 FRAME_SAMPLES = SAMPLE_RATE * FRAME_MS // 1000  # 640
-SILENCE_MS = 700
-MIN_UTTERANCE_MS = 500
-MAX_UTTERANCE_MS = 15_000
+# Tuned for Whisper quality: short utterances make it hallucinate / loop.
+# We pay ~1.5s extra latency to keep chunks long enough for clean decoding.
+SILENCE_MS = 1500
+MIN_UTTERANCE_MS = 3000
+MAX_UTTERANCE_MS = 20_000
 RMS_THRESHOLD = 350.0  # int16 RMS below this = silence
 
 
