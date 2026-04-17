@@ -86,6 +86,15 @@ async def generate_protocol(
         return r.content
 
 
+async def insights(token: str, session_id: str) -> dict:
+    async with httpx.AsyncClient(timeout=TIMEOUT) as c:
+        r = await c.get(
+            f"{BACKEND_URL}/api/v1/sessions/{session_id}/insights",
+            headers=_headers(token),
+        )
+        return await _handle(r)
+
+
 async def qa(token: str, session_id: str, question: str, lang: str) -> dict:
     async with httpx.AsyncClient(timeout=TIMEOUT) as c:
         r = await c.get(

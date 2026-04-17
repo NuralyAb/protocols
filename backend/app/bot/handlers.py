@@ -7,6 +7,7 @@ from datetime import datetime
 
 from telegram import Update
 from telegram.constants import ParseMode
+from telegram.error import BadRequest
 from telegram.ext import ContextTypes
 
 from app.bot import api_client as api
@@ -207,6 +208,84 @@ async def cmd_protocol(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 
+def _fmt_duration(ms: int) -> str:
+    s = max(0, int(ms // 1000))
+    if s >= 3600:
+        return f"{s // 3600}:{(s % 3600) // 60:02d}:{s % 60:02d}"
+    return f"{s // 60}:{s % 60:02d}"
+
+
+async def cmd_insights(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show speaker stats + top words + LLM key moments — good for casual talks."""
+    user = update.effective_user
+    msg = update.effective_message
+    assert user is not None and msg is not None
+    state = _state(user.id)
+    lang = state.lang
+    if not state.token:
+        await msg.reply_text(t("not_authed", lang))
+        return
+    if not state.session_id:
+        await msg.reply_text(t("no_session", lang))
+        return
+
+    await msg.reply_text(t("qa_thinking", lang))
+    try:
+        data = await api.insights(state.token, state.session_id)
+    except BackendError as e:
+        await msg.reply_text(t("qa_fail", lang, error=e.detail))
+        return
+
+    totals = data.get("totals") or {}
+    speakers = data.get("speakers") or []
+    words = data.get("top_words") or []
+    moments = data.get("key_moments") or []
+
+    if not speakers and not words:
+        await msg.reply_text(t("insights_empty", lang))
+        return
+
+    parts: list[str] = [t("insights_header", lang)]
+    if totals:
+        parts.append(
+            f"⏱ {_fmt_duration(totals.get('speaking_ms', 0))} · "
+            f"👥 {totals.get('speakers', 0)} · "
+            f"💬 {totals.get('segments', 0)} реплик"
+        )
+
+    if speakers:
+        parts.append("")
+        parts.append(t("insights_speakers", lang))
+        for sp in speakers[:6]:
+            label = sp.get("label") or sp.get("id") or "?"
+            pct = sp.get("percentage") or 0
+            ms = sp.get("speaking_ms") or 0
+            parts.append(f"• *{label}* — {_fmt_duration(ms)} ({int(pct)}%)")
+
+    if words:
+        parts.append("")
+        parts.append(t("insights_top_words", lang))
+        top = words[:12]
+        parts.append(" · ".join(f"`{w['word']}`×{w['count']}" for w in top))
+
+    if moments:
+        parts.append("")
+        parts.append(t("insights_moments", lang))
+        for m in moments[:6]:
+            ts_ms = m.get("start_ms") or m.get("timestamp") or 0
+            text = (m.get("text") or m.get("summary") or "").strip()
+            if not text:
+                continue
+            parts.append(f"[{_mmss(int(ts_ms))}] {text}")
+
+    body = "\n".join(parts)
+    try:
+        await msg.reply_text(body, parse_mode=ParseMode.MARKDOWN)
+    except BadRequest:
+        # Markdown failed to parse — fallback to plain.
+        await msg.reply_text(body)
+
+
 async def handle_question(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     """Free-form text → RAG question."""
     user = update.effective_user
@@ -235,10 +314,19 @@ async def handle_question(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> Non
     tail = ""
     if sources:
         bits = [f"{_mmss(s.get('start_ms', 0))} {s.get('speaker', '')}".strip() for s in sources[:4]]
-        tail = "\n\n_" + ", ".join(bits) + "_"
-    await thinking.edit_text(answer + tail, parse_mode=ParseMode.MARKDOWN)
+        tail = "\n\n— " + ", ".join(bits)
+    await _safe_edit(thinking, answer + tail)
 
 
 def _mmss(ms: int) -> str:
     s = max(0, int(ms // 1000))
     return f"{s // 60:02d}:{s % 60:02d}"
+
+
+async def _safe_edit(msg, text: str) -> None:
+    # LLM replies may contain stray *, _, ` that break MARKDOWN parsing and
+    # leave the "thinking…" placeholder forever. Fall back to plain text.
+    try:
+        await msg.edit_text(text, parse_mode=ParseMode.MARKDOWN)
+    except BadRequest:
+        await msg.edit_text(text)

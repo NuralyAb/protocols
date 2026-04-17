@@ -15,6 +15,7 @@ from telegram.ext import (
 from app.bot.handlers import (
     cmd_change,
     cmd_help,
+    cmd_insights,
     cmd_lang,
     cmd_last,
     cmd_login,
@@ -48,6 +49,7 @@ def main() -> None:
     app.add_handler(CommandHandler("change", cmd_change))
     app.add_handler(CommandHandler("protocol", cmd_protocol))
     app.add_handler(CommandHandler("report", cmd_protocol))  # alias
+    app.add_handler(CommandHandler("insights", cmd_insights))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_question))
 
     app.run_polling(drop_pending_updates=True)

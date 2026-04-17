@@ -34,8 +34,9 @@ _CATALOG: dict[str, dict[Lang, str]] = {
             "/lang ru|kk|en — язык ответов\n"
             "/last — последние сессии\n"
             "/use DDMMYYYY-HHMM — выбрать сессию\n"
-            "/protocol — сгенерировать протокол (PDF)\n"
+            "/protocol — сгенерировать формальный протокол (PDF)\n"
             "/report — то же, что /protocol\n"
+            "/insights — анализ встречи (для неформальных разговоров)\n"
             "/change — сменить сессию (повторный ввод ID)\n"
             "/help — эта справка\n\n"
             "После /use пришлите любой вопрос обычным сообщением — я отвечу по транскрипту."
@@ -47,8 +48,9 @@ _CATALOG: dict[str, dict[Lang, str]] = {
             "/lang ru|kk|en — жауап тілі\n"
             "/last — соңғы сессиялар\n"
             "/use DDMMYYYY-HHMM — сессия таңдау\n"
-            "/protocol — хаттама (PDF)\n"
+            "/protocol — ресми хаттама (PDF)\n"
             "/report — /protocol-пен бірдей\n"
+            "/insights — жиналыс талдауы (еркін әңгіме үшін)\n"
             "/change — сессияны өзгерту\n"
             "/help — осы анықтама\n\n"
             "/use-тан кейін кез-келген сұрақ жіберіңіз — стенограмма бойынша жауап беремін."
@@ -60,8 +62,9 @@ _CATALOG: dict[str, dict[Lang, str]] = {
             "/lang ru|kk|en — answer language\n"
             "/last — recent sessions\n"
             "/use DDMMYYYY-HHMM — pick a session\n"
-            "/protocol — generate protocol (PDF)\n"
+            "/protocol — formal protocol (PDF)\n"
             "/report — same as /protocol\n"
+            "/insights — meeting analysis (for casual talks)\n"
             "/change — switch session\n"
             "/help — this help\n\n"
             "After /use, send any question — I'll answer from the transcript."
@@ -156,6 +159,31 @@ _CATALOG: dict[str, dict[Lang, str]] = {
         "ru": "Ошибка: {error}",
         "kk": "Қате: {error}",
         "en": "Error: {error}",
+    },
+    "insights_header": {
+        "ru": "📊 Анализ встречи",
+        "kk": "📊 Жиналыс талдауы",
+        "en": "📊 Meeting insights",
+    },
+    "insights_speakers": {
+        "ru": "*Спикеры:*",
+        "kk": "*Спикерлер:*",
+        "en": "*Speakers:*",
+    },
+    "insights_top_words": {
+        "ru": "*Ключевые слова:*",
+        "kk": "*Кілт сөздер:*",
+        "en": "*Top words:*",
+    },
+    "insights_moments": {
+        "ru": "*Ключевые моменты:*",
+        "kk": "*Негізгі сәттер:*",
+        "en": "*Key moments:*",
+    },
+    "insights_empty": {
+        "ru": "В транскрипте пока недостаточно данных для анализа.",
+        "kk": "Талдау үшін деректер жеткіліксіз.",
+        "en": "Not enough transcript data for insights yet.",
     },
     "change_prompt": {
         "ru": "Отправьте /use DDMMYYYY-HHMM чтобы выбрать другую сессию, или /last для списка.",

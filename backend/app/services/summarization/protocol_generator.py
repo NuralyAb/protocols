@@ -97,7 +97,16 @@ def generate_from_template(
     lang: Lang = pick_language(languages_detected)
 
     serialized = _format_transcript(transcript)
-    instructions = f"{SYSTEM[lang]}\n\n{_INSTRUCT[lang]}"
+    base = f"{SYSTEM[lang]}\n\n{_INSTRUCT[lang]}"
+    # Casual notes can read between the lines (implicit agreements, topics).
+    if template.meta.id == "casual" or "casual" in (template.meta.id or ""):
+        base += (
+            "\n\nДЛЯ ЭТОГО ШАБЛОНА: разговор неформальный. Разрешено делать разумные выводы:"
+            " извлекать ТЕМЫ (о чём говорили), УПОМИНАНИЯ (люди/компании/цифры), явные И подразумеваемые"
+            " договорённости ('я пришлю завтра' = договорённость), следующие шаги. Если чего-то"
+            " действительно нет — убери всю секцию вместе с заголовком."
+        )
+    instructions = base
     user_msg = (
         f"# ТРАНСКРИПТ / TRANSCRIPT\n\n{serialized}\n\n"
         f"---\n\n"
